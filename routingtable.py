@@ -86,7 +86,7 @@ class Node(object):
         self.id = id
         self.listen_host = listen_host
         self.listen_port = listen_port
-        
+
         self.recv_buffer = [] # [socket_data, ...]
         self.recv_packs = {} # {msg_id: {pack_index: pack_data}}
         self.rt = RoutingTable()
@@ -98,8 +98,9 @@ class Node(object):
         self.loop.call_soon(self.req_discover_nodes)
 
     def read_sock(self):
-        data = self.sock.recv(1500)
-        print('read_sock: len(data) =', len(data), ':', data)
+        data, remote_address = self.sock.recvfrom(1500)
+        remote_host, remote_port = remote_address
+        print('read_sock [DATA]:', remote_address, len(data), data)
 
         self.recv_buffer.append(data)
         recv_buffer = b''.join(self.recv_buffer)
@@ -121,7 +122,7 @@ class Node(object):
         pack_data = recv_buffer_rest[:pack_size]
         rest_data = recv_buffer_rest[pack_size:]
         self.recv_buffer.append(rest_data)
-        print('read_sock [PACK]:', msg_size, pack_size, pack_index, pack_data)
+        print('read_sock [PACK]:', msg_size, msg_n_packs, pack_size, pack_index, pack_data)
 
         if msg_id not in self.recv_packs:
             self.recv_packs[msg_id] = {}
@@ -134,7 +135,7 @@ class Node(object):
         msg = b''.join([self.recv_packs[msg_id][i] for i in range(msg_n_packs)])
         print('read_sock [MSG]:', msg)
 
-        self.parse_message(msg)
+        self.parse_message(msg, remote_host, remote_port)
 
     def req_discover_nodes(self):
         c = self.rt.random()
@@ -152,10 +153,10 @@ class Node(object):
             print('pack', pack)
             self.sock.sendto(pack, (c.remote_host, c.remote_port))
 
-    def on_req_discover_nodes(self, *args, **kwargs):
-        self.res_discover_nodes(*args, **kwargs)
+    def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
+        self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
 
-    def res_discover_nodes(self, *args, **kwargs):
+    def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         contacts = self.rt.all(*args, **kwargs)
         contacts = [c.__getstate__() for c in contacts.values()]
         contacts_data = marshal.dumps(contacts)
@@ -175,8 +176,8 @@ class Node(object):
             print('pack', pack)
             self.sock.sendto(pack, (remote_host, remote_port))
 
-    def on_res_discover_nodes(self, contacts):
-        print('on_res_discover_nodes:', contacts)
+    def on_res_discover_nodes(self, remote_host, remote_port, contacts):
+        print('on_res_discover_nodes:', remote_host, remote_port, contacts)
 
         for cd in contacts:
             c = Contact(**cd) # version ?
@@ -203,7 +204,7 @@ class Node(object):
         pack += pack_data
         return pack
 
-    def parse_message(self, message):
+    def parse_message(self, message, remote_host, remote_port):
         message_header_size = struct.calcsize('!BBBB')
         message_header = message[:message_header_size]
         message_data = message[message_header_size:]
@@ -222,10 +223,10 @@ class Node(object):
                 else:
                     args, kwargs = (), {}
 
-                self.on_req_discover_nodes(*args, **kwargs)
+                self.on_req_discover_nodes(remote_host, remote_port, *args, **kwargs)
             elif message_type == self.NODE_PROTOCOL_RES:
                 res = marshal.loads(message_data)
-                self.on_res_discover_nodes(res)
+                self.on_res_discover_nodes(remote_host, remote_port, res)
                 print('!!!', )
 
 if __name__ == '__main__':
