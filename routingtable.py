@@ -175,7 +175,7 @@ class Node(object):
         contacts = self.rt.all(*args, **kwargs)
         contacts = [c.__getstate__() for c in contacts.values()]
         contacts_data = marshal.dumps(contacts)
-        remote_host, remote_port = '127.0.0.1', 6633
+        # remote_host, remote_port = '127.0.0.1', 6633
 
         message_data = struct.pack(
             '!BBBB',
