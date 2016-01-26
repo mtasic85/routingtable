@@ -227,8 +227,8 @@ class Node(object):
     def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # response
         node_id = self.id
-        node_local_host = self.local_host
-        node_local_port = self.local_port
+        node_local_host = self.listen_host
+        node_local_port = self.listen_port
         node_contacts = self.rt.all(*args, **kwargs)
         node_contacts = [c.__getstate__() for c in node_contacts]
 
@@ -275,7 +275,7 @@ class Node(object):
                 remote_host = cd['remote_host'],
                 remote_port = cd['remote_port'],
             )
-            
+
             self.rt.add(c)
 
         self.loop.call_later(2.0, self.req_discover_nodes)
