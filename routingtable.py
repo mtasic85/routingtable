@@ -141,15 +141,25 @@ class Node(object):
         
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.listen_host, self.listen_port))
-        self.loop.add_reader(self.sock, self.read_sock)
+        self.loop.add_reader(self.sock, self.rect_sock_data)
 
         self.loop.call_soon(self.discover_nodes)
+        self.loop.call_soon(self.check_recv_buffer)
 
-    def read_sock(self):
+    def check_recv_buffer(self):
+        for remote_address, data in self.recv_buffer.items():
+            self.process_sock_data(recv_buffer, remote_address)
+
+        self.loop.call_later(1.0, self.check_recv_buffer)
+
+    def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
         remote_host, remote_port = remote_address
         # print('read_sock [DATA]:', remote_address, len(data), data)
 
+        self.process_sock_data(data, remote_address)
+
+    def process_sock_data(data, remote_address):
         if remote_address not in self.recv_buffer:
             self.recv_buffer[remote_address] = []
 
