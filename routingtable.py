@@ -41,51 +41,66 @@ class Contact(object):
 class RoutingTable(object):
     def __init__(self):
         self.version = 0
-        self.contacts = {} # {node_id: Contact()}
+        self.contacts = [] # [Contact(), ...]
 
     def add(self, c):
         c.version = self.version
         self.version += 1
-        self.contacts[c.id] = c
+        self.contacts.append(c)
 
     def get(self, id):
-        c = self.contacts[id]
-        return c
+        for c in self.contacts:
+            if c.id == id:
+                return c
 
-    def remove(self, c):
-        del self.contacts[c.id]
+    def remove(self, c_or_id):
+        if isinstance(c_or_id, Contact):
+            self.contacts.remove(c)
+        else:
+            for i, c in enumerate(self.contacts[:]):
+                if c.id == c_or_id:
+                    del self.contacts[i]
+                    break
+
+    def update_by_address(self, remote_host, remote_port, id, local_host, local_port):
+        for c in self.contacts:
+            if c.remote_host == remote_host and c.remote_port == remote_port:
+                c.id = id
+                c.local_host = local_host
+                c.local_port = local_port
+                break
 
     def random(self):
         if len(self.contacts):
-            c = random.choice(list(self.contacts.values()))
+            c = random.choice(self.contacts)
         else:
             c = None
 
         return c
 
     def all(self, version=0):
-        contacts = {}
+        contacts = []
 
-        for c in self.contacts.values():
+        for c in self.contacts:
             if c.version < version:
                 continue
 
-            contacts[c.id] = c
+            contacts.append(c)
 
         return contacts
 
 class Node(object):
-    # version 1.0
+    # protocol version 1.0
     NODE_PROTOCOL_VERSION_MAJOR = 1
     NODE_PROTOCOL_VERSION_MINOR = 0
 
+    # protocol types
     NODE_PROTOCOL_REQ = 0
     NODE_PROTOCOL_RES = 1
 
-    NODE_PROTOCOL_KEEP_ALIVE = 0
-    NODE_PROTOCOL_PING = 1
-    NODE_PROTOCOL_PONG = 2
-    NODE_PROTOCOL_DISCOVER_NODES = 3
+    # protocol commands
+    NODE_PROTOCOL_PING = 0
+    NODE_PROTOCOL_DISCOVER_NODES = 1
 
     def __init__(self, loop, id=None, listen_host='127.0.0.1', listen_port=6633):
         self.loop = loop
@@ -148,58 +163,6 @@ class Node(object):
 
         self.parse_message(msg, remote_host, remote_port)
 
-    def req_discover_nodes(self):
-        c = self.rt.random()
-        print('req_discover_nodes', c)
-
-        if not c:
-            self.loop.call_later(2.0, self.req_discover_nodes)
-            return
-
-        message_data = struct.pack(
-            '!BBBB',
-            self.NODE_PROTOCOL_VERSION_MAJOR,
-            self.NODE_PROTOCOL_VERSION_MINOR,
-            self.NODE_PROTOCOL_REQ,
-            self.NODE_PROTOCOL_DISCOVER_NODES,
-        )
-
-        for pack in self.build_message(message_data):
-            print('pack', pack)
-            self.sock.sendto(pack, (c.remote_host, c.remote_port))
-
-    def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
-        self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
-
-    def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
-        contacts = self.rt.all(*args, **kwargs)
-        contacts = [c.__getstate__() for c in contacts.values()]
-        contacts_data = marshal.dumps(contacts)
-        # remote_host, remote_port = '127.0.0.1', 6633
-
-        message_data = struct.pack(
-            '!BBBB',
-            self.NODE_PROTOCOL_VERSION_MAJOR,
-            self.NODE_PROTOCOL_VERSION_MINOR,
-            self.NODE_PROTOCOL_RES,
-            self.NODE_PROTOCOL_DISCOVER_NODES,
-        )
-
-        message_data += contacts_data
-
-        for pack in self.build_message(message_data):
-            print('pack', pack)
-            self.sock.sendto(pack, (remote_host, remote_port))
-
-    def on_res_discover_nodes(self, remote_host, remote_port, contacts):
-        print('on_res_discover_nodes:', remote_host, remote_port, contacts)
-
-        for cd in contacts:
-            c = Contact(**cd) # version ?
-            self.rt.add(c)
-
-        self.loop.call_later(2.0, self.req_discover_nodes)
-
     def build_message(self, message_data):
         message_id = random.randint(0, 2 ** 64)
         step = 1400 - 3 * 4
@@ -225,11 +188,7 @@ class Node(object):
         message_data = message[message_header_size:]
         message_version_major, message_version_minor, message_type, message_command = struct.unpack('!BBBB', message_header)
 
-        if message_command == self.NODE_PROTOCOL_KEEP_ALIVE:
-            pass
-        elif message_command == self.NODE_PROTOCOL_PING:
-            pass
-        elif message_command == self.NODE_PROTOCOL_PONG:
+        if message_command == self.NODE_PROTOCOL_PING:
             pass
         elif message_command == self.NODE_PROTOCOL_DISCOVER_NODES:
             if message_type == self.NODE_PROTOCOL_REQ:
@@ -242,7 +201,84 @@ class Node(object):
             elif message_type == self.NODE_PROTOCOL_RES:
                 res = marshal.loads(message_data)
                 self.on_res_discover_nodes(remote_host, remote_port, res)
-                print('!!!', )
+
+    def req_discover_nodes(self):
+        c = self.rt.random()
+        print('req_discover_nodes', c)
+
+        if not c:
+            self.loop.call_later(2.0, self.req_discover_nodes)
+            return
+
+        message_data = struct.pack(
+            '!BBBB',
+            self.NODE_PROTOCOL_VERSION_MAJOR,
+            self.NODE_PROTOCOL_VERSION_MINOR,
+            self.NODE_PROTOCOL_REQ,
+            self.NODE_PROTOCOL_DISCOVER_NODES,
+        )
+
+        for pack in self.build_message(message_data):
+            self.sock.sendto(pack, (c.remote_host, c.remote_port))
+
+    def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
+        self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
+
+    def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
+        # response
+        node_id = self.id
+        node_local_host = self.local_host
+        node_local_port = self.local_port
+        node_contacts = self.rt.all(*args, **kwargs)
+        node_contacts = [c.__getstate__() for c in node_contacts]
+
+        res = {
+            'id': node_id,
+            'local_host': node_local_host,
+            'local_port': node_local_port,
+            'contacts': node_contacts,
+        }
+
+        res_data = marshal.dumps(res)
+
+        # message data
+        message_data = struct.pack(
+            '!BBBB',
+            self.NODE_PROTOCOL_VERSION_MAJOR,
+            self.NODE_PROTOCOL_VERSION_MINOR,
+            self.NODE_PROTOCOL_RES,
+            self.NODE_PROTOCOL_DISCOVER_NODES,
+        )
+
+        message_data += contacts_data
+
+        # send message
+        for pack in self.build_message(message_data):
+            self.sock.sendto(pack, (remote_host, remote_port))
+
+    def on_res_discover_nodes(self, remote_host, remote_port, res):
+        print('on_res_discover_nodes:', remote_host, remote_port, res)
+
+        self.rt.update_by_address(
+            remote_host,
+            remote_port,
+            id = res['id'],
+            local_host = res['local_host'],
+            local_port = res['local_port'],
+        )
+
+        for cd in res['contacts']:
+            c = Contact(
+                id = cd['id'],
+                local_host = cd['local_host'],
+                local_port = cd['local_port'],
+                remote_host = cd['remote_host'],
+                remote_port = cd['remote_port'],
+            )
+            
+            self.rt.add(c)
+
+        self.loop.call_later(2.0, self.req_discover_nodes)
 
 if __name__ == '__main__':
     # event loop
