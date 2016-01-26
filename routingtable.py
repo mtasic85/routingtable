@@ -159,6 +159,9 @@ class Node(object):
         t = time.time()
         
         for c in self.rt.contacts[:]:
+            if not c.last_seen:
+                continue
+            
             if t - c.last_seen > 5.0:
                 self.rt.remove(c)
 
