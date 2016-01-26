@@ -98,6 +98,9 @@ class RoutingTable(object):
         contacts = []
 
         for c in self.contacts:
+            if c.version is None:
+                continue
+
             if c.version < version:
                 continue
 
@@ -279,7 +282,7 @@ class Node(object):
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.all(version=kwargs.get('version', None))
+        node_contacts = self.rt.all(version=kwargs.get('version', 0))
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
