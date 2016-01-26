@@ -163,6 +163,7 @@ class Node(object):
                 continue
 
             if t - c.last_seen > 10.0:
+                print('check_last_seen_contacts removed [CONTACT]:', c)
                 self.rt.remove(c)
 
         self.loop.call_later(20.0, self.check_last_seen_contacts)
