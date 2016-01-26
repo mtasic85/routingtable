@@ -155,7 +155,7 @@ class Node(object):
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
         # print('read_sock [DATA]:', remote_address, len(data), data)
-        
+
         self.process_sock_data(data, remote_address)
 
     def process_sock_data(self, data, remote_address):
@@ -280,7 +280,7 @@ class Node(object):
             self.sock.sendto(pack, (c.remote_host, c.remote_port))
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
-        print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
+        # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
 
         # update/add contact which is requesting response
         c = Contact(
@@ -330,8 +330,9 @@ class Node(object):
             self.sock.sendto(pack, (remote_host, remote_port))
 
     def on_res_discover_nodes(self, remote_host, remote_port, res):
-        print('on_res_discover_nodes:', remote_host, remote_port, res)
-
+        # print('on_res_discover_nodes:', remote_host, remote_port, res)
+        print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']))
+        
         self.rt.update_by_address(
             remote_host,
             remote_port,
@@ -352,7 +353,7 @@ class Node(object):
             if c.id != self.id:
                 self.rt.update_or_add(c)
 
-        self.loop.call_later(2.0, self.discover_nodes)
+        self.loop.call_later(5.0, self.discover_nodes)
 
 if __name__ == '__main__':
     # event loop
