@@ -75,6 +75,8 @@ class RoutingTable(object):
                 n.local_host = c.local_host
                 n.local_port = c.local_port
                 break
+        else:
+            self.contacts.append(c)
 
     def update_by_address(self, remote_host, remote_port, id, local_host, local_port):
         for c in self.contacts:
