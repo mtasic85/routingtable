@@ -1,5 +1,7 @@
-__all__ = ['Node']
+__all__ = ['Node', 'RoutingTable', 'Contact']
+
 import math
+import uuid
 import struct
 import random
 import socket
@@ -7,7 +9,7 @@ import asyncio
 import marshal
 
 class Contact(object):
-    def __init__(self, id, local_host, local_port, remote_host, remote_port, version=None):
+    def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, version=None):
         self.id = id
         self.local_host = local_host
         self.local_port = local_port
@@ -54,7 +56,11 @@ class RoutingTable(object):
         del self.contacts[c.id]
 
     def random(self):
-        c = random.choice(list(self.contacts.values()))
+        if len(self.contacts):
+            c = random.choice(list(self.contacts.values()))
+        else:
+            c = None
+
         return c
 
     def all(self, version=0):
@@ -83,7 +89,12 @@ class Node(object):
 
     def __init__(self, loop, id=None, listen_host='127.0.0.1', listen_port=6633):
         self.loop = loop
+        
+        if id == None:
+            id = str(uuid.uuid4())
+
         self.id = id
+
         self.listen_host = listen_host
         self.listen_port = listen_port
 
@@ -140,6 +151,10 @@ class Node(object):
     def req_discover_nodes(self):
         c = self.rt.random()
         print('req_discover_nodes', c)
+
+        if not c:
+            self.loop.call_later(2.0, self.req_discover_nodes)
+            return
 
         message_data = struct.pack(
             '!BBBB',
@@ -230,8 +245,6 @@ class Node(object):
                 print('!!!', )
 
 if __name__ == '__main__':
-    import uuid
-
     # event loop
     loop = asyncio.get_event_loop()
 
@@ -239,9 +252,7 @@ if __name__ == '__main__':
     node.rt.add(Contact(str(uuid.uuid4()), '127.0.0.1', 6633, '127.0.0.1', 6633))
     node.rt.add(Contact(str(uuid.uuid4()), '127.0.0.1', 6634, '127.0.0.1', 6633))
     node.rt.add(Contact(str(uuid.uuid4()), '127.0.0.1', 6635, '127.0.0.1', 6633))
-    # print(node.rt.all())
-    # print(node.rt.all(1))
-
-    # Blocking call interrupted by loop.stop()
+    
+    # run loop
     loop.run_forever()
     loop.close()
