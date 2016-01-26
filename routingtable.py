@@ -162,7 +162,7 @@ class Node(object):
             if t - c.last_seen > 10.0:
                 self.rt.remove(c)
 
-        self.loop.call_later(20.0, self.check_recv_buffer)
+        self.loop.call_later(20.0, self.check_last_seen_contacts)
 
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
