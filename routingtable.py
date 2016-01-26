@@ -161,11 +161,11 @@ class Node(object):
         for c in self.rt.contacts[:]:
             if not c.last_seen:
                 continue
-            
-            if t - c.last_seen > 5.0:
+
+            if t - c.last_seen > 10.0:
                 self.rt.remove(c)
 
-        self.loop.call_later(10.0, self.check_last_seen_contacts)
+        self.loop.call_later(20.0, self.check_last_seen_contacts)
 
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
