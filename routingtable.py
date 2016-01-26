@@ -149,17 +149,18 @@ class Node(object):
     def check_recv_buffer(self):
         for remote_address in self.recv_buffer:
             self.process_sock_data(b'', remote_address)
-        
+
         self.loop.call_later(1.0, self.check_recv_buffer)
 
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
-        remote_host, remote_port = remote_address
         # print('read_sock [DATA]:', remote_address, len(data), data)
-
+        
         self.process_sock_data(data, remote_address)
 
     def process_sock_data(self, data, remote_address):
+        remote_host, remote_port = remote_address
+
         if remote_address not in self.recv_buffer:
             self.recv_buffer[remote_address] = []
 
