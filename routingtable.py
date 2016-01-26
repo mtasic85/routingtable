@@ -101,12 +101,12 @@ class RoutingTable(object):
         contacts = []
 
         for c in self.contacts:
-            if c.version is None:
-                continue
+            # if c.version is None:
+            #     continue
 
-            if c.version < version:
-                continue
-
+            # if c.version < version:
+            #     continue
+            
             contacts.append(c)
 
         return contacts
