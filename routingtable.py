@@ -309,7 +309,7 @@ class Node(object):
             remote_host = remote_host,
             remote_port = remote_port,
         )
-        
+
         # if c.id != self.id:
         #     self.rt.update_or_add(c)
         #     c.last_seen = time.time()
@@ -362,6 +362,8 @@ class Node(object):
             local_host = res['local_host'],
             local_port = res['local_port'],
         )
+        c = self.rt.get(res['id'])
+        c.last_seen = time.time()
 
         for cd in res['contacts']:
             c = Contact(
@@ -371,7 +373,7 @@ class Node(object):
                 remote_host = cd['remote_host'],
                 remote_port = cd['remote_port'],
             )
-            
+
             # if c.id != self.id:
             #     self.rt.update_or_add(c)
             #     c.last_seen = time.time()
