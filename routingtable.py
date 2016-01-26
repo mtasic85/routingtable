@@ -309,10 +309,12 @@ class Node(object):
             remote_host = remote_host,
             remote_port = remote_port,
         )
-
-        if c.id != self.id:
-            self.rt.update_or_add(c)
-            c.last_seen = time.time()
+        
+        # if c.id != self.id:
+        #     self.rt.update_or_add(c)
+        #     c.last_seen = time.time()
+        self.rt.update_or_add(c)
+        c.last_seen = time.time()
 
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
@@ -369,10 +371,12 @@ class Node(object):
                 remote_host = cd['remote_host'],
                 remote_port = cd['remote_port'],
             )
-
-            if c.id != self.id:
-                self.rt.update_or_add(c)
-                c.last_seen = time.time()
+            
+            # if c.id != self.id:
+            #     self.rt.update_or_add(c)
+            #     c.last_seen = time.time()
+            self.rt.update_or_add(c)
+            c.last_seen = time.time()
 
         # self.loop.call_later(5.0, self.discover_nodes)
         self.loop.call_later(random.random() * 5.0, self.discover_nodes)
