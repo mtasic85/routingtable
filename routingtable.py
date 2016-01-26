@@ -334,7 +334,7 @@ class Node(object):
                 remote_port = cd['remote_port'],
             )
 
-            self.rt.add(c)
+            self.rt.update_or_add(c)
 
         self.loop.call_later(2.0, self.discover_nodes)
 
