@@ -233,7 +233,7 @@ class Node(object):
         node_local_port = self.listen_port
 
         args = ()
-        kwarsg = {
+        kwargs = {
             'id': node_id,
             'local_host': node_local_host,
             'local_port': node_local_port,
