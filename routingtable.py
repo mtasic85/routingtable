@@ -332,7 +332,7 @@ class Node(object):
     def on_res_discover_nodes(self, remote_host, remote_port, res):
         # print('on_res_discover_nodes:', remote_host, remote_port, res)
         print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']))
-        
+
         self.rt.update_by_address(
             remote_host,
             remote_port,
@@ -353,7 +353,8 @@ class Node(object):
             if c.id != self.id:
                 self.rt.update_or_add(c)
 
-        self.loop.call_later(5.0, self.discover_nodes)
+        # self.loop.call_later(5.0, self.discover_nodes)
+        self.loop.call_later(random.random() * 5.0, self.discover_nodes)
 
 if __name__ == '__main__':
     # event loop
