@@ -167,7 +167,7 @@ class Node(object):
                 self.rt.remove(c)
 
         self.loop.call_later(
-            30 + random.random() * 30.0,
+            60 + random.random() * 60.0,
             self.check_last_seen_contacts
         )
 
