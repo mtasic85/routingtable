@@ -62,6 +62,20 @@ class RoutingTable(object):
                     del self.contacts[i]
                     break
 
+    def update_or_add(self, c):
+        for n in self.contacts:
+            if n.id == c.id:
+                n.local_host = c.local_host
+                n.local_port = c.local_port
+                n.remote_host = c.remote_host
+                n.remote_port = c.remote_port
+                break
+            elif n.remote_host == c.remote_host and n.remote_port == c.remote_port:
+                n.id = c.id
+                n.local_host = c.local_host
+                n.local_port = c.local_port
+                break
+
     def update_by_address(self, remote_host, remote_port, id, local_host, local_port):
         for c in self.contacts:
             if c.remote_host == remote_host and c.remote_port == remote_port:
@@ -121,7 +135,7 @@ class Node(object):
         self.sock.bind((self.listen_host, self.listen_port))
         self.loop.add_reader(self.sock, self.read_sock)
 
-        self.loop.call_soon(self.req_discover_nodes)
+        self.loop.call_soon(self.discover_nodes)
 
     def read_sock(self):
         data, remote_address = self.sock.recvfrom(1500)
@@ -202,14 +216,31 @@ class Node(object):
                 res = marshal.loads(message_data)
                 self.on_res_discover_nodes(remote_host, remote_port, res)
 
-    def req_discover_nodes(self):
+    #
+    # discover_nodes
+    #
+    def discover_nodes(self):
+        # request
         c = self.rt.random()
-        print('req_discover_nodes', c)
+        print('discover_nodes', c)
 
         if not c:
-            self.loop.call_later(2.0, self.req_discover_nodes)
+            self.loop.call_later(2.0, self.discover_nodes)
             return
 
+        node_id = self.id
+        node_local_host = self.listen_host
+        node_local_port = self.listen_port
+
+        req = {
+            'id': node_id,
+            'local_host': node_local_host,
+            'local_port': node_local_port,
+        }
+
+        req_data = marshal.dumps(req)
+
+        # message
         message_data = struct.pack(
             '!BBBB',
             self.NODE_PROTOCOL_VERSION_MAJOR,
@@ -218,10 +249,25 @@ class Node(object):
             self.NODE_PROTOCOL_DISCOVER_NODES,
         )
 
+        message_data += req_data
+
+        # send message
         for pack in self.build_message(message_data):
             self.sock.sendto(pack, (c.remote_host, c.remote_port))
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
+        # update/add contact which is requesting response
+        c = Contact(
+            id = kwargs['id'],
+            local_host = kwargs['local_host'],
+            local_port = kwargs['local_port'],
+            remote_host = remote_host,
+            remote_port = remote_port,
+        )
+
+        self.rt.update_or_add(c)
+
+        # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
 
     def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
@@ -278,7 +324,7 @@ class Node(object):
 
             self.rt.add(c)
 
-        self.loop.call_later(2.0, self.req_discover_nodes)
+        self.loop.call_later(2.0, self.discover_nodes)
 
 if __name__ == '__main__':
     # event loop
