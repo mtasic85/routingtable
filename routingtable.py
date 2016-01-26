@@ -86,9 +86,12 @@ class RoutingTable(object):
                 c.local_port = local_port
                 break
 
-    def random(self):
+    def random(self, without_id=None):
         if len(self.contacts):
             c = random.choice(self.contacts)
+            
+            if c.id == without_id:
+                c = None
         else:
             c = None
 
@@ -226,7 +229,7 @@ class Node(object):
     #
     def discover_nodes(self):
         # request
-        c = self.rt.random()
+        c = self.rt.random(without_id=self.id)
         print('discover_nodes:', c)
 
         if not c:
@@ -264,7 +267,7 @@ class Node(object):
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
-        
+
         # update/add contact which is requesting response
         c = Contact(
             id = kwargs['id'],
