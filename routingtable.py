@@ -159,7 +159,7 @@ class Node(object):
 
         self.process_sock_data(data, remote_address)
 
-    def process_sock_data(data, remote_address):
+    def process_sock_data(self, data, remote_address):
         if remote_address not in self.recv_buffer:
             self.recv_buffer[remote_address] = []
 
