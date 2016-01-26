@@ -250,7 +250,7 @@ class Node(object):
             self.NODE_PROTOCOL_DISCOVER_NODES,
         )
 
-        message_data += contacts_data
+        message_data += res_data
 
         # send message
         for pack in self.build_message(message_data):
