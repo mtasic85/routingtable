@@ -147,9 +147,9 @@ class Node(object):
         self.loop.call_soon(self.check_recv_buffer)
 
     def check_recv_buffer(self):
-        for remote_address, data in self.recv_buffer.items():
-            self.process_sock_data(data, remote_address)
-
+        for remote_address in self.recv_buffer:
+            self.process_sock_data(b'', remote_address)
+        
         self.loop.call_later(1.0, self.check_recv_buffer)
 
     def rect_sock_data(self):
