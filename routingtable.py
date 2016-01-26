@@ -277,7 +277,7 @@ class Node(object):
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.all(*args, **kwargs)
+        node_contacts = self.rt.all(version=kwargs.get('version', None))
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
