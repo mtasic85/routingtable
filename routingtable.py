@@ -2,6 +2,7 @@ __all__ = ['Node', 'RoutingTable', 'Contact']
 
 import math
 import uuid
+import time
 import struct
 import random
 import socket
@@ -16,6 +17,7 @@ class Contact(object):
         self.remote_host = remote_host
         self.remote_port = remote_port
         self.version = version
+        self.last_seen = None
 
     def __repr__(self):
         return '<{} id={} local={}:{} remote={}:{} ver={}>'.format(
@@ -145,12 +147,22 @@ class Node(object):
 
         self.loop.call_soon(self.discover_nodes)
         self.loop.call_soon(self.check_recv_buffer)
+        self.loop.call_soon(self.check_last_seen_contacts)
 
     def check_recv_buffer(self):
         for remote_address in self.recv_buffer:
             self.process_sock_data(b'', remote_address)
 
         self.loop.call_later(1.0, self.check_recv_buffer)
+
+    def check_last_seen_contacts(self):
+        t = time.time()
+        
+        for c in self.rt.contacts[:]:
+            if t - c.last_seen > 10.0:
+                self.rt.remove(c)
+
+        self.loop.call_later(20.0, self.check_recv_buffer)
 
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
@@ -293,6 +305,7 @@ class Node(object):
 
         if c.id != self.id:
             self.rt.update_or_add(c)
+            c.last_seen = time.time()
 
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
@@ -352,6 +365,7 @@ class Node(object):
 
             if c.id != self.id:
                 self.rt.update_or_add(c)
+                c.last_seen = time.time()
 
         # self.loop.call_later(5.0, self.discover_nodes)
         self.loop.call_later(random.random() * 5.0, self.discover_nodes)
