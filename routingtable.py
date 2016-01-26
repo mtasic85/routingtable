@@ -222,7 +222,7 @@ class Node(object):
     def discover_nodes(self):
         # request
         c = self.rt.random()
-        print('discover_nodes', c)
+        print('discover_nodes:', c)
 
         if not c:
             self.loop.call_later(2.0, self.discover_nodes)
@@ -232,13 +232,15 @@ class Node(object):
         node_local_host = self.listen_host
         node_local_port = self.listen_port
 
-        req = {
+        args = ()
+        kwarsg = {
             'id': node_id,
             'local_host': node_local_host,
             'local_port': node_local_port,
         }
 
-        req_data = marshal.dumps(req)
+        res = (args, kwargs)
+        req_data = marshal.dumps(res)
 
         # message
         message_data = struct.pack(
