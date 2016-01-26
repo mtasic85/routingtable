@@ -263,6 +263,8 @@ class Node(object):
             self.sock.sendto(pack, (c.remote_host, c.remote_port))
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
+        print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
+        
         # update/add contact which is requesting response
         c = Contact(
             id = kwargs['id'],
