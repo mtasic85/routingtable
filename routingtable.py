@@ -276,10 +276,10 @@ class Node(object):
             remote_host = remote_host,
             remote_port = remote_port,
         )
-        
+
         if c.id != self.id:
             self.rt.update_or_add(c)
-        
+
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
 
@@ -335,7 +335,8 @@ class Node(object):
                 remote_port = cd['remote_port'],
             )
 
-            self.rt.update_or_add(c)
+            if c.id != self.id:
+                self.rt.update_or_add(c)
 
         self.loop.call_later(2.0, self.discover_nodes)
 
