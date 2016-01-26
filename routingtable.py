@@ -135,7 +135,7 @@ class Node(object):
         self.listen_host = listen_host
         self.listen_port = listen_port
 
-        self.recv_buffer = [] # [socket_data, ...]
+        self.recv_buffer = {} # {(remote_host: remote_port): [socket_data, ...]}
         self.recv_packs = {} # {msg_id: {pack_index: pack_data}}
         self.rt = RoutingTable()
         
@@ -150,26 +150,29 @@ class Node(object):
         remote_host, remote_port = remote_address
         # print('read_sock [DATA]:', remote_address, len(data), data)
 
-        self.recv_buffer.append(data)
-        recv_buffer = b''.join(self.recv_buffer)
+        if remote_address not in self.recv_buffer:
+            self.recv_buffer[remote_address] = []
+
+        self.recv_buffer[remote_address].append(data)
+        recv_buffer = b''.join(self.recv_buffer[remote_address])
         pack_header_size = struct.calcsize('!QIIII')
 
         if len(recv_buffer) < pack_header_size:
             return
 
-        del self.recv_buffer[:]
+        del self.recv_buffer[remote_address][:]
         pack_header = recv_buffer[:pack_header_size]
         recv_buffer_rest = recv_buffer[pack_header_size:]
         msg_id, msg_size, msg_n_packs, pack_size, pack_index = struct.unpack('!QIIII', pack_header)
 
         if pack_size > len(recv_buffer_rest):
-            self.recv_buffer.append(pack_header)
-            self.recv_buffer.append(recv_buffer_rest)
+            self.recv_buffer[remote_address].append(pack_header)
+            self.recv_buffer[remote_address].append(recv_buffer_rest)
             return
 
         pack_data = recv_buffer_rest[:pack_size]
         rest_data = recv_buffer_rest[pack_size:]
-        self.recv_buffer.append(rest_data)
+        self.recv_buffer[remote_address].append(rest_data)
         # print('read_sock [PACK]:', msg_size, msg_n_packs, pack_size, pack_index, pack_data)
 
         if msg_id not in self.recv_packs:
