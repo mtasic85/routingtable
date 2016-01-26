@@ -57,7 +57,7 @@ class RoutingTable(object):
 
     def remove(self, c_or_id):
         if isinstance(c_or_id, Contact):
-            self.contacts.remove(c)
+            self.contacts.remove(c_or_id)
         else:
             for i, c in enumerate(self.contacts[:]):
                 if c.id == c_or_id:
