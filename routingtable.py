@@ -126,7 +126,7 @@ class Node(object):
     def read_sock(self):
         data, remote_address = self.sock.recvfrom(1500)
         remote_host, remote_port = remote_address
-        print('read_sock [DATA]:', remote_address, len(data), data)
+        # print('read_sock [DATA]:', remote_address, len(data), data)
 
         self.recv_buffer.append(data)
         recv_buffer = b''.join(self.recv_buffer)
@@ -148,7 +148,7 @@ class Node(object):
         pack_data = recv_buffer_rest[:pack_size]
         rest_data = recv_buffer_rest[pack_size:]
         self.recv_buffer.append(rest_data)
-        print('read_sock [PACK]:', msg_size, msg_n_packs, pack_size, pack_index, pack_data)
+        # print('read_sock [PACK]:', msg_size, msg_n_packs, pack_size, pack_index, pack_data)
 
         if msg_id not in self.recv_packs:
             self.recv_packs[msg_id] = {}
@@ -159,7 +159,7 @@ class Node(object):
             return
 
         msg = b''.join([self.recv_packs[msg_id][i] for i in range(msg_n_packs)])
-        print('read_sock [MSG]:', msg)
+        # print('read_sock [MSG]:', msg)
 
         self.parse_message(msg, remote_host, remote_port)
 
