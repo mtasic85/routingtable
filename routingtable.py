@@ -168,21 +168,20 @@ class Node(object):
         self.loop.call_later(random.random(), self.check_recv_buffer)
 
     def check_last_seen_contacts(self):
-        t = time.time()
-        
         for c in self.rt.contacts[:]:
             if c.id == self.id:
+                c.last_seen = time.time()
                 continue
 
             if not c.last_seen:
-                c.last_seen = t
+                c.last_seen = time.time()
 
-            if t - c.last_seen > 60.0:
+            if time.time() - c.last_seen > 10.0:
                 print('check_last_seen_contacts removed [CONTACT]:', c)
                 self.rt.remove(c)
 
         self.loop.call_later(
-            30.0 + random.random() * 30.0,
+            10.0 + random.random() * 10.0,
             self.check_last_seen_contacts
         )
 
@@ -316,6 +315,9 @@ class Node(object):
         # send message
         self.send_message(message_data, c.remote_host, c.remote_port)
 
+        # schedule next discover
+        self.loop.call_later(random.random() * 10.0, self.discover_nodes)
+
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
 
@@ -414,8 +416,6 @@ class Node(object):
                     self.rt.add(c)
 
             c.last_seen = time.time()
-
-        self.loop.call_later(random.random() * 2.0, self.discover_nodes)
 
 if __name__ == '__main__':
     # event loop
