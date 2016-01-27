@@ -91,9 +91,9 @@ class RoutingTable(object):
         else:
             id = c_or_id
 
-            for i, c in enumerate(self.contacts[:]):
+            for c in self.all():
                 if c.id == id:
-                    del self.contacts[i]
+                    self.contacts.remove(c)
                     return c
 
     def random(self, without_id=None):
@@ -107,7 +107,7 @@ class RoutingTable(object):
 
         return c
 
-    def all(self, version=0):
+    def all(self, version=0, max_old=None):
         contacts = []
 
         for c in self.contacts:
@@ -116,6 +116,9 @@ class RoutingTable(object):
 
             # if c.version < version:
             #     continue
+
+            if max_old and c.last_seen and time.time() - c.last_seen > max_old:
+                continue
 
             contacts.append(c)
 
@@ -168,7 +171,7 @@ class Node(object):
         self.loop.call_later(random.random(), self.check_recv_buffer)
 
     def check_last_seen_contacts(self):
-        for c in self.rt.contacts[:]:
+        for c in self.rt.all():
             if c.id == self.id:
                 c.last_seen = time.time()
                 continue
@@ -176,12 +179,12 @@ class Node(object):
             if not c.last_seen:
                 c.last_seen = time.time()
 
-            if time.time() - c.last_seen > 10.0:
+            if time.time() - c.last_seen > 60.0:
                 print('check_last_seen_contacts removed [CONTACT]:', c)
                 self.rt.remove(c)
 
         self.loop.call_later(
-            10.0 + random.random() * 10.0,
+            20.0 + random.random() * 10.0,
             self.check_last_seen_contacts
         )
 
@@ -283,7 +286,7 @@ class Node(object):
         c = self.rt.random(without_id=self.id)
 
         if not c:
-            self.loop.call_later(2.0, self.discover_nodes)
+            self.loop.call_later(5.0 + random.random() * 5.0, self.discover_nodes)
             return
 
         print('discover_nodes:', c)
@@ -316,7 +319,7 @@ class Node(object):
         self.send_message(message_data, c.remote_host, c.remote_port)
 
         # schedule next discover
-        self.loop.call_later(random.random() * 10.0, self.discover_nodes)
+        self.loop.call_later(5.0 + random.random() * 5.0, self.discover_nodes)
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
@@ -347,7 +350,7 @@ class Node(object):
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.all(version=kwargs.get('version', 0))
+        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=10.0)
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
