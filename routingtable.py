@@ -78,11 +78,13 @@ class RoutingTable(object):
                 n.local_port = c.local_port
                 n.remote_host = c.remote_host
                 n.remote_port = c.remote_port
+                n.last_seen = c.last_seen
                 break
             elif n.remote_host == c.remote_host and n.remote_port == c.remote_port:
                 n.id = c.id
                 n.local_host = c.local_host
                 n.local_port = c.local_port
+                n.last_seen = c.last_seen
                 break
         else:
             self.contacts.append(c)
@@ -93,6 +95,7 @@ class RoutingTable(object):
                 c.id = id
                 c.local_host = local_host
                 c.local_port = local_port
+                c.last_seen = last_seen
                 break
 
     def random(self, without_id=None):
@@ -170,6 +173,9 @@ class Node(object):
         t = time.time()
         
         for c in self.rt.contacts[:]:
+            if c.id == self.id:
+                continue
+
             if not c.last_seen:
                 c.last_seen = t # ???
                 continue
@@ -311,8 +317,6 @@ class Node(object):
         message_data += req_data
 
         # send message
-        # for pack in self.build_message(message_data):
-        #     self.sock.sendto(pack, (c.remote_host, c.remote_port))
         self.send_message(message_data, c.remote_host, c.remote_port)
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
@@ -326,12 +330,12 @@ class Node(object):
             remote_host = remote_host,
             remote_port = remote_port,
         )
+        c.last_seen = time.time()
 
         # if c.id != self.id:
         #     self.rt.update_or_add(c)
         #     c.last_seen = time.time()
         self.rt.update_or_add(c)
-        c.last_seen = time.time()
 
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
@@ -365,8 +369,6 @@ class Node(object):
         message_data += res_data
 
         # send message
-        # for pack in self.build_message(message_data):
-        #     self.sock.sendto(pack, (remote_host, remote_port))
         self.send_message(message_data, remote_host, remote_port)
 
     def on_res_discover_nodes(self, remote_host, remote_port, res):
@@ -391,12 +393,12 @@ class Node(object):
                 remote_host = cd['remote_host'],
                 remote_port = cd['remote_port'],
             )
+            c.last_seen = time.time()
 
             # if c.id != self.id:
             #     self.rt.update_or_add(c)
             #     c.last_seen = time.time()
             self.rt.update_or_add(c)
-            c.last_seen = time.time()
 
         # self.loop.call_later(5.0, self.discover_nodes)
         self.loop.call_later(random.random() * 5.0, self.discover_nodes)
