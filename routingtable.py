@@ -164,7 +164,7 @@ class Node(object):
 
             self.process_sock_data(b'', remote_address)
 
-        self.loop.call_later(1.0, self.check_recv_buffer)
+        self.loop.call_later(random.random(), self.check_recv_buffer)
 
     def check_last_seen_contacts(self):
         t = time.time()
