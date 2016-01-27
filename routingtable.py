@@ -10,23 +10,25 @@ import asyncio
 import marshal
 
 class Contact(object):
-    def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, version=None):
+    def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, bootstrap=False, version=None):
         self.id = id
         self.local_host = local_host
         self.local_port = local_port
         self.remote_host = remote_host
         self.remote_port = remote_port
         self.version = version
+        self.bootstrap = bootstrap
         self.last_seen = None
 
     def __repr__(self):
-        return '<{} id={} local={}:{} remote={}:{} ver={}>'.format(
+        return '<{} id={} local={}:{} remote={}:{} bootstrap={} ver={}>'.format(
             self.__class__.__name__,
             self.id,
             self.local_host,
             self.local_port,
             self.remote_host,
             self.remote_port,
+            self.bootstrap,
             self.version,
         )
 
@@ -37,6 +39,7 @@ class Contact(object):
             'local_port': self.local_port,
             'remote_host': self.remote_host,
             'remote_port': self.remote_port,
+            'bootstrap': self.bootstrap,
             'version': self.version,
         }
 
@@ -116,6 +119,10 @@ class RoutingTable(object):
 
             # if c.version < version:
             #     continue
+            
+            if c.bootstrap:
+                contacts.append(c)
+                continue
 
             if max_old and c.last_seen and time.time() - c.last_seen > max_old:
                 continue
@@ -137,7 +144,7 @@ class Node(object):
     NODE_PROTOCOL_PING = 0
     NODE_PROTOCOL_DISCOVER_NODES = 1
 
-    def __init__(self, loop, id=None, listen_host='127.0.0.1', listen_port=6633):
+    def __init__(self, loop, id=None, listen_host='127.0.0.1', listen_port=6633, bootstrap=False):
         self.loop = loop
         
         if id == None:
@@ -147,6 +154,7 @@ class Node(object):
 
         self.listen_host = listen_host
         self.listen_port = listen_port
+        self.bootstrap = bootstrap
 
         self.recv_buffer = {} # {(remote_host: remote_port): [socket_data, ...]}
         self.recv_packs = {} # {msg_id: {pack_index: pack_data}}
@@ -172,6 +180,9 @@ class Node(object):
 
     def check_last_seen_contacts(self):
         for c in self.rt.all():
+            if c.bootstrap == True:
+                continue
+
             if c.id == self.id:
                 c.last_seen = time.time()
                 continue
@@ -179,12 +190,12 @@ class Node(object):
             if not c.last_seen:
                 c.last_seen = time.time()
 
-            if time.time() - c.last_seen > 60.0:
+            if time.time() - c.last_seen > 2 * 60.0:
                 print('check_last_seen_contacts removed [CONTACT]:', c)
                 self.rt.remove(c)
 
         self.loop.call_later(
-            20.0 + random.random() * 10.0,
+            50.0 + random.random() * 10.0,
             self.check_last_seen_contacts
         )
 
@@ -286,7 +297,7 @@ class Node(object):
         c = self.rt.random(without_id=self.id)
 
         if not c:
-            self.loop.call_later(5.0 + random.random() * 5.0, self.discover_nodes)
+            self.loop.call_later(10.0 + random.random() * 1.0, self.discover_nodes)
             return
 
         print('discover_nodes:', c)
@@ -319,7 +330,7 @@ class Node(object):
         self.send_message(message_data, c.remote_host, c.remote_port)
 
         # schedule next discover
-        self.loop.call_later(5.0 + random.random() * 5.0, self.discover_nodes)
+        self.loop.call_later(10.0 + random.random() * 1.0, self.discover_nodes)
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
@@ -336,6 +347,7 @@ class Node(object):
                     local_port = kwargs['local_port'],
                     remote_host = remote_host,
                     remote_port = remote_port,
+                    bootstrap = kwargs.get('bootstrap', False),
                 )
 
                 self.rt.add(c)
@@ -350,7 +362,7 @@ class Node(object):
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=10.0)
+        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=20.0)
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
@@ -378,7 +390,7 @@ class Node(object):
 
     def on_res_discover_nodes(self, remote_host, remote_port, res):
         # print('on_res_discover_nodes:', remote_host, remote_port, res)
-        print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']))
+        print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']), len(self.rt.contacts))
 
         # update requesting node/contact in routing table
         # if res['id'] != self.id:
@@ -394,6 +406,7 @@ class Node(object):
                     local_port = res['local_port'],
                     remote_host = remote_host,
                     remote_port = remote_port,
+                    bootstrap = res.get('bootstrap', False),
                 )
 
                 self.rt.add(c)
@@ -414,6 +427,7 @@ class Node(object):
                         local_port = cd['local_port'],
                         remote_host = cd['remote_host'],
                         remote_port = cd['remote_port'],
+                        bootstrap = cd.get('bootstrap', False),
                     )
 
                     self.rt.add(c)

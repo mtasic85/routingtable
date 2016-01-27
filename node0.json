@@ -2,5 +2,6 @@
     "id": null,
     "listen_host": "0.0.0.0",
     "listen_port": 6633,
+    "bootstrap": true,
     "contacts": []
 }

@@ -15,6 +15,7 @@ for i in range(10):
         id = node_config['id'],
         listen_host = node_config['listen_host'],
         listen_port = node_config['listen_port'] + i,
+        bootstrap = node_config.get('bootstrap', False),
     )
 
     for cd in node_config['contacts']:
