@@ -71,23 +71,23 @@ class RoutingTable(object):
                     del self.contacts[i]
                     break
 
-    def update_or_add(self, c):
-        for n in self.contacts:
-            if n.id == c.id:
-                n.local_host = c.local_host
-                n.local_port = c.local_port
-                n.remote_host = c.remote_host
-                n.remote_port = c.remote_port
-                n.last_seen = c.last_seen
-                break
-            elif n.remote_host == c.remote_host and n.remote_port == c.remote_port:
-                n.id = c.id
-                n.local_host = c.local_host
-                n.local_port = c.local_port
-                n.last_seen = c.last_seen
-                break
-        else:
-            self.contacts.append(c)
+    # def update_or_add(self, c):
+    #     for n in self.contacts:
+    #         if n.id == c.id:
+    #             n.local_host = c.local_host
+    #             n.local_port = c.local_port
+    #             n.remote_host = c.remote_host
+    #             n.remote_port = c.remote_port
+    #             n.last_seen = c.last_seen
+    #             break
+    #         elif n.remote_host == c.remote_host and n.remote_port == c.remote_port:
+    #             n.id = c.id
+    #             n.local_host = c.local_host
+    #             n.local_port = c.local_port
+    #             n.last_seen = c.last_seen
+    #             break
+    #     else:
+    #         self.contacts.append(c)
 
     def update_by_address(self, remote_host, remote_port, id, local_host, local_port):
         for c in self.contacts:
@@ -95,7 +95,6 @@ class RoutingTable(object):
                 c.id = id
                 c.local_host = local_host
                 c.local_port = local_port
-                c.last_seen = last_seen
                 break
 
     def random(self, without_id=None):
@@ -285,12 +284,12 @@ class Node(object):
     def discover_nodes(self):
         # request
         c = self.rt.random(without_id=self.id)
-        print('discover_nodes:', c)
 
         if not c:
             self.loop.call_later(2.0, self.discover_nodes)
             return
 
+        print('discover_nodes:', c)
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
@@ -322,20 +321,35 @@ class Node(object):
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
 
-        # update/add contact which is requesting response
-        c = Contact(
-            id = kwargs['id'],
-            local_host = kwargs['local_host'],
-            local_port = kwargs['local_port'],
-            remote_host = remote_host,
-            remote_port = remote_port,
-        )
-        c.last_seen = time.time()
+        # # update/add contact which is requesting response
+        # c = Contact(
+        #     id = kwargs['id'],
+        #     local_host = kwargs['local_host'],
+        #     local_port = kwargs['local_port'],
+        #     remote_host = remote_host,
+        #     remote_port = remote_port,
+        # )
 
-        # if c.id != self.id:
-        #     self.rt.update_or_add(c)
-        #     c.last_seen = time.time()
-        self.rt.update_or_add(c)
+        # # if c.id != self.id:
+        # #     self.rt.update_or_add(c)
+        # #     c.last_seen = time.time()
+        # self.rt.update_or_add(c)
+        # c.last_seen = time.time()
+
+        c = self.rt.get(cd['id'])
+        
+        if not c:
+            c = Contact(
+                id = kwargs['id'],
+                local_host = kwargs['local_host'],
+                local_port = kwargs['local_port'],
+                remote_host = remote_host,
+                remote_port = remote_port,
+            )
+
+            self.rt.add(c)
+
+        c.last_seen = time.time()
 
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
@@ -386,19 +400,20 @@ class Node(object):
         c.last_seen = time.time()
 
         for cd in res['contacts']:
-            c = Contact(
-                id = cd['id'],
-                local_host = cd['local_host'],
-                local_port = cd['local_port'],
-                remote_host = cd['remote_host'],
-                remote_port = cd['remote_port'],
-            )
-            c.last_seen = time.time()
+            c = self.rt.get(cd['id'])
 
-            # if c.id != self.id:
-            #     self.rt.update_or_add(c)
-            #     c.last_seen = time.time()
-            self.rt.update_or_add(c)
+            if not c:
+                c = Contact(
+                    id = cd['id'],
+                    local_host = cd['local_host'],
+                    local_port = cd['local_port'],
+                    remote_host = cd['remote_host'],
+                    remote_port = cd['remote_port'],
+                )
+
+                self.rt.add(c)
+
+            c.last_seen = time.time()
 
         # self.loop.call_later(5.0, self.discover_nodes)
         self.loop.call_later(random.random() * 5.0, self.discover_nodes)
