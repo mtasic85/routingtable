@@ -55,6 +55,13 @@ class RoutingTable(object):
             if c.id == id:
                 return c
 
+    def has(self, id):
+        for c in self.contacts:
+            if c.id == id:
+                return True
+
+        return False
+
     def remove(self, c_or_id):
         if isinstance(c_or_id, Contact):
             self.contacts.remove(c_or_id)
@@ -141,6 +148,7 @@ class Node(object):
         self.recv_packs = {} # {msg_id: {pack_index: pack_data}}
         self.rt = RoutingTable()
         
+        # udp socket
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.listen_host, self.listen_port))
         self.loop.add_reader(self.sock, self.rect_sock_data)
@@ -150,7 +158,10 @@ class Node(object):
         self.loop.call_soon(self.check_last_seen_contacts)
 
     def check_recv_buffer(self):
-        for remote_address in self.recv_buffer:
+        for remote_address, recv_buffer in self.recv_buffer.items():
+            if not len(recv_buffer):
+                continue
+
             self.process_sock_data(b'', remote_address)
 
         self.loop.call_later(1.0, self.check_recv_buffer)
@@ -160,6 +171,7 @@ class Node(object):
         
         for c in self.rt.contacts[:]:
             if not c.last_seen:
+                c.last_seen = t # ???
                 continue
 
             if t - c.last_seen > 30.0:
@@ -167,7 +179,7 @@ class Node(object):
                 self.rt.remove(c)
 
         self.loop.call_later(
-            60 + random.random() * 60.0,
+            30 + random.random() * 30.0,
             self.check_last_seen_contacts
         )
 
@@ -217,6 +229,10 @@ class Node(object):
         # print('read_sock [MSG]:', msg)
 
         self.parse_message(msg, remote_host, remote_port)
+
+    def send_message(self, message_data, remote_host, remote_port):
+        for pack in self.build_message(message_data):
+            self.sock.sendto(pack, (remote_host, remote_port))
 
     def build_message(self, message_data):
         message_id = random.randint(0, 2 ** 64)
@@ -295,8 +311,9 @@ class Node(object):
         message_data += req_data
 
         # send message
-        for pack in self.build_message(message_data):
-            self.sock.sendto(pack, (c.remote_host, c.remote_port))
+        # for pack in self.build_message(message_data):
+        #     self.sock.sendto(pack, (c.remote_host, c.remote_port))
+        self.send_message(message_data, c.remote_host, c.remote_port)
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
@@ -348,8 +365,9 @@ class Node(object):
         message_data += res_data
 
         # send message
-        for pack in self.build_message(message_data):
-            self.sock.sendto(pack, (remote_host, remote_port))
+        # for pack in self.build_message(message_data):
+        #     self.sock.sendto(pack, (remote_host, remote_port))
+        self.send_message(message_data, remote_host, remote_port)
 
     def on_res_discover_nodes(self, remote_host, remote_port, res):
         # print('on_res_discover_nodes:', remote_host, remote_port, res)
