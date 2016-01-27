@@ -67,10 +67,19 @@ class RoutingTable(object):
 
         return None
 
-    def has(self, id):
-        for c in self.contacts:
-            if c.id == id:
-                return True
+    def has(self, id_or_remote_address):
+        if isinstance(id_or_remote_address, (str, bytes)):
+            id = id_or_remote_address
+            
+            for c in self.contacts:
+                if c.id == id:
+                    return True
+        elif isinstance(id_or_remote_address, (tuple, list)):
+            remote_host, remote_port = id_or_remote_address
+
+            for c in self.contacts:
+                if c.remote_host == remote_host and c.remote_port == remote_port:
+                    return True
 
         return False
 
@@ -166,15 +175,14 @@ class Node(object):
                 continue
 
             if not c.last_seen:
-                c.last_seen = t # ???
-                continue
+                c.last_seen = t
 
-            if t - c.last_seen > 30.0:
+            if t - c.last_seen > 60.0:
                 print('check_last_seen_contacts removed [CONTACT]:', c)
                 self.rt.remove(c)
 
         self.loop.call_later(
-            30 + random.random() * 30.0,
+            30.0 + random.random() * 30.0,
             self.check_last_seen_contacts
         )
 
@@ -314,15 +322,18 @@ class Node(object):
         c = self.rt.get(kwargs['id'])
 
         if not c:
-            c = Contact(
-                id = kwargs['id'],
-                local_host = kwargs['local_host'],
-                local_port = kwargs['local_port'],
-                remote_host = remote_host,
-                remote_port = remote_port,
-            )
+            c = self.rt.get((remote_host, remote_port))
 
-            self.rt.add(c)
+            if not c:
+                c = Contact(
+                    id = kwargs['id'],
+                    local_host = kwargs['local_host'],
+                    local_port = kwargs['local_port'],
+                    remote_host = remote_host,
+                    remote_port = remote_port,
+                )
+
+                self.rt.add(c)
 
         c.last_seen = time.time()
 
@@ -365,24 +376,24 @@ class Node(object):
         print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']))
 
         # update requesting node/contact in routing table
-        if res['id'] != self.id:
-            c = self.rt.get(res['id'])
+        # if res['id'] != self.id:
+        c = self.rt.get(res['id'])
+
+        if not c:
+            c = self.rt.get((remote_host, remote_port))
 
             if not c:
-                c = self.rt.get((remote_host, remote_port))
-
-                if not c:
-                    c = Contact(
-                        id = res['id'],
-                        local_host = res['local_host'],
-                        local_port = res['local_port'],
-                        remote_host = remote_host,
-                        remote_port = remote_port,
-                    )
+                c = Contact(
+                    id = res['id'],
+                    local_host = res['local_host'],
+                    local_port = res['local_port'],
+                    remote_host = remote_host,
+                    remote_port = remote_port,
+                )
 
                 self.rt.add(c)
 
-            c.last_seen = time.time()
+        c.last_seen = time.time()
 
         # update discovered nodes/contacts
         for cd in res['contacts']:
@@ -400,11 +411,11 @@ class Node(object):
                         remote_port = cd['remote_port'],
                     )
 
-                self.rt.add(c)
+                    self.rt.add(c)
 
             c.last_seen = time.time()
 
-        self.loop.call_later(random.random() * 5.0, self.discover_nodes)
+        self.loop.call_later(random.random() * 2.0, self.discover_nodes)
 
 if __name__ == '__main__':
     # event loop
