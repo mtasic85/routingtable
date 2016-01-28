@@ -65,12 +65,32 @@ class RoutingTable(object):
                     self.contacts.remove(c)
                     return c
 
-    def random(self, without_id=None):
-        if len(self.contacts):
-            c = random.choice(self.contacts)
-            
-            if c.id == without_id:
-                c = None
+    def random(self, without_id=None, max_old=None):
+        # filter contacts
+        if without_id:
+            if max_old:
+                contacts = [c for c in self.contacts if c.id != without_id and t - c.last_seen <= max_old]
+            else:
+                contacts = [c for c in self.contacts if c.id != without_id]
+        else:
+            if max_old:
+                contacts = [c for c in self.contacts if t - c.last_seen <= max_old]
+            else:
+                contacts = [c for c in self.contacts]
+
+        # random contact
+        if random.randint(0, 10) == 5:
+            # chance is 10% to return boostrap contact
+            # this is good because if all nodes fail, bootstrap should be
+            # the most reliable node
+            c = None
+
+            for n in self.contacts:
+                if n.bootstrap:
+                    c = n
+                    break
+        elif len(contacts):
+            c = random.choice(contacts)
         else:
             c = None
 
@@ -96,6 +116,13 @@ class RoutingTable(object):
             contacts.append(c)
 
         return contacts
+
+    def remove_older_than(self, max_old):
+        t = time.time()
+
+        for c in self.contacts[:]:
+            if t - c.last_seen > max_old:
+                self.rt.contacts.remove(c)
 
 class Contact(object):
     def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, bootstrap=False, version=None):
@@ -185,7 +212,7 @@ class Node(object):
 
         self.loop.call_soon(self.discover_nodes)
         self.loop.call_soon(self.check_recv_buffer)
-        self.loop.call_soon(self.check_last_seen_contacts)
+        # self.loop.call_soon(self.check_last_seen_contacts)
 
     def check_recv_buffer(self):
         for remote_address, recv_buffer in self.recv_buffer.items():
@@ -196,26 +223,26 @@ class Node(object):
 
         self.loop.call_later(random.random(), self.check_recv_buffer)
 
-    def check_last_seen_contacts(self):
-        for c in self.rt.all():
-            if c.bootstrap == True:
-                continue
+    # def check_last_seen_contacts(self):
+    #     for c in self.rt.all():
+    #         if c.bootstrap == True:
+    #             continue
 
-            if c.id == self.id:
-                c.last_seen = time.time()
-                continue
+    #         if c.id == self.id:
+    #             c.last_seen = time.time()
+    #             continue
 
-            if not c.last_seen:
-                c.last_seen = time.time()
+    #         if not c.last_seen:
+    #             c.last_seen = time.time()
 
-            if time.time() - c.last_seen > 2 * 60.0:
-                print('check_last_seen_contacts removed [CONTACT]:', c)
-                self.rt.remove(c)
+    #         if time.time() - c.last_seen > 2 * 60.0:
+    #             print('check_last_seen_contacts removed [CONTACT]:', c)
+    #             self.rt.remove(c)
 
-        self.loop.call_later(
-            50.0 + random.random() * 10.0,
-            self.check_last_seen_contacts
-        )
+    #     self.loop.call_later(
+    #         50.0 + random.random() * 10.0,
+    #         self.check_last_seen_contacts
+    #     )
 
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
@@ -376,11 +403,14 @@ class Node(object):
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
 
     def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
+        # forget old nodes which are not discovered recenly
+        self.rt.remove_older_than(60.0)
+
         # response
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=20.0)
+        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=10.0)
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
@@ -411,7 +441,6 @@ class Node(object):
         print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']), len(self.rt.contacts))
 
         # update requesting node/contact in routing table
-        # if res['id'] != self.id:
         c = self.rt.get(res['id'])
 
         if not c:
@@ -430,6 +459,9 @@ class Node(object):
                 self.rt.add(c)
 
         c.last_seen = time.time()
+
+        # forget old nodes which are not discovered recenly
+        self.rt.remove_older_than(60.0)
 
         # update discovered nodes/contacts
         for cd in res['contacts']:
