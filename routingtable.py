@@ -409,13 +409,13 @@ class Node(object):
 
     def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # forget old nodes which are not discovered recenly
-        self.rt.remove_older_than(60.0)
+        self.rt.contacts.remove_older_than(60.0)
 
         # response
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=15.0, max_contacts=0.90)
+        node_contacts = self.rt.contacts.all(version=kwargs.get('version', 0), max_old=15.0, max_contacts=0.90)
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
@@ -448,10 +448,14 @@ class Node(object):
         # update requesting node/contact in routing table
         c = self.rt.get(res['id'])
 
-        if not c:
+        if c:
+            c.last_seen = time.time()
+        else:
             c = self.rt.get((remote_host, remote_port))
 
-            if not c:
+            if c:
+                c.last_seen = time.time()
+            else:
                 c = Contact(
                     id = res['id'],
                     local_host = res['local_host'],
@@ -460,31 +464,29 @@ class Node(object):
                     remote_port = remote_port,
                     bootstrap = res.get('bootstrap', False),
                 )
-
-                self.rt.add(c)
-
-        c.last_seen = time.time()
+                
+                # because `c` was know when was requested from it
+                # to send its nodes in discovery process,
+                # add this `c` to known contacts if it was removed
+                # from there by any chance
+                c.last_seen = time.time()
+                self.rt.contacts.add(c)
 
         # forget old nodes which are not discovered recenly
-        self.rt.remove_older_than(60.0)
+        self.rt.contacts.remove_older_than(60.0)
 
         # update discovered nodes/contacts
         for cd in res['contacts']:
-            x = False
-
-            for rc in self.rt.remove_contacts:
-                if rc.id == cd['id']:
-                    x = True
-
-            if x:
-                continue
-
             c = self.rt.get(cd['id'])
 
-            if not c:
+            if c:
+                c.last_seen = time.time()
+            else:
                 c = self.rt.get((cd['remote_host'], cd['remote_port']))
 
-                if not c:
+                if c:
+                    c.last_seen = time.time()
+                else:
                     c = Contact(
                         id = cd['id'],
                         local_host = cd['local_host'],
@@ -494,9 +496,8 @@ class Node(object):
                         bootstrap = cd.get('bootstrap', False),
                     )
 
-                    self.rt.add(c)
-
-            c.last_seen = time.time()
+                    c.last_seen = time.time()
+                    self.rt.add_contacts.add(c)
 
 if __name__ == '__main__':
     # event loop
