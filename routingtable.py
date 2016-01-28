@@ -122,7 +122,7 @@ class RoutingTable(object):
 
         for c in self.contacts[:]:
             if t - c.last_seen > max_old:
-                self.rt.contacts.remove(c)
+                self.contacts.remove(c)
 
 class Contact(object):
     def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, bootstrap=False, version=None):
