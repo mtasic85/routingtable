@@ -23,11 +23,14 @@ class ContactList(object):
         self.items_id_map = {}
         self.items_raddr_map = {}
 
+    def __len__(self):
+        return len(self.items)
+
     def add(self, c):
         self.items.append(c)
 
-        if c.id is None:
-            raise ValueError('Contact it cannot be None')
+        if c.id is None and not c.bootstrap:
+            raise ValueError('Contact it cannot be None, it its is not bootstrap node')
 
         self.items_id_map[c.id] = c
         self.items_raddr_map[c.remote_host, c.remote_port] = c
@@ -47,7 +50,7 @@ class ContactList(object):
             remote_host, remote_port = id_or_remote_address
 
             try:
-                c = self.items_map[remote_host, remote_port]
+                c = self.items_raddr_map[remote_host, remote_port]
             except KeyError as e:
                 pass
 
@@ -89,7 +92,7 @@ class ContactList(object):
             # the most reliable node
             c = None
 
-            for n in self.contacts:
+            for n in self.items:
                 if n.bootstrap:
                     c = n
                     break
@@ -129,10 +132,12 @@ class ContactList(object):
     def remove_older_than(self, max_old):
         t = time.time()
 
-        for c in self.contacts[:]:
+        for c in self.items[:]:
             if t - c.last_seen > max_old:
                 print(PrintColors.YELLOW, 'remove_older_than', self, max_old, c, PrintColors.END)
                 self.contacts.remove(c)
+                del self.items_id_map[c.id]
+                del self.items_raddr_map[c.remote_host, c.remote_port]
 
 class RoutingTable(object):
     def __init__(self):
@@ -446,12 +451,12 @@ class Node(object):
         print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']), len(self.rt.contacts))
 
         # update requesting node/contact in routing table
-        c = self.rt.get(res['id'])
+        c = self.rt.contacts.get(res['id'])
 
         if c:
             c.last_seen = time.time()
         else:
-            c = self.rt.get((remote_host, remote_port))
+            c = self.rt.contacts.get((remote_host, remote_port))
 
             if c:
                 c.last_seen = time.time()
@@ -464,7 +469,7 @@ class Node(object):
                     remote_port = remote_port,
                     bootstrap = res.get('bootstrap', False),
                 )
-                
+
                 # because `c` was know when was requested from it
                 # to send its nodes in discovery process,
                 # add this `c` to known contacts if it was removed
@@ -477,12 +482,12 @@ class Node(object):
 
         # update discovered nodes/contacts
         for cd in res['contacts']:
-            c = self.rt.get(cd['id'])
+            c = self.rt.contacts.get(cd['id'])
 
             if c:
                 c.last_seen = time.time()
             else:
-                c = self.rt.get((cd['remote_host'], cd['remote_port']))
+                c = self.rt.contacts.get((cd['remote_host'], cd['remote_port']))
 
                 if c:
                     c.last_seen = time.time()
