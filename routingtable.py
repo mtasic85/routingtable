@@ -1,4 +1,4 @@
-__all__ = ['Node', 'RoutingTable', 'Contact']
+__all__ = ['RoutingTable', 'Contact', 'ProtocolCommand', 'Node']
 
 import math
 import uuid
@@ -8,40 +8,6 @@ import random
 import socket
 import asyncio
 import marshal
-
-class Contact(object):
-    def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, bootstrap=False, version=None):
-        self.id = id
-        self.local_host = local_host
-        self.local_port = local_port
-        self.remote_host = remote_host
-        self.remote_port = remote_port
-        self.version = version
-        self.bootstrap = bootstrap
-        self.last_seen = None
-
-    def __repr__(self):
-        return '<{} id={} local={}:{} remote={}:{} bootstrap={} ver={}>'.format(
-            self.__class__.__name__,
-            self.id,
-            self.local_host,
-            self.local_port,
-            self.remote_host,
-            self.remote_port,
-            self.bootstrap,
-            self.version,
-        )
-
-    def __getstate__(self):
-        return {
-            'id': self.id,
-            'local_host': self.local_host,
-            'local_port': self.local_port,
-            'remote_host': self.remote_host,
-            'remote_port': self.remote_port,
-            'bootstrap': self.bootstrap,
-            'version': self.version,
-        }
 
 class RoutingTable(object):
     def __init__(self):
@@ -130,6 +96,58 @@ class RoutingTable(object):
             contacts.append(c)
 
         return contacts
+
+class Contact(object):
+    def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, bootstrap=False, version=None):
+        self.id = id
+        self.local_host = local_host
+        self.local_port = local_port
+        self.remote_host = remote_host
+        self.remote_port = remote_port
+        self.version = version
+        self.bootstrap = bootstrap
+        self.last_seen = None
+
+    def __repr__(self):
+        return '<{} id={} local={}:{} remote={}:{} bootstrap={} ver={}>'.format(
+            self.__class__.__name__,
+            self.id,
+            self.local_host,
+            self.local_port,
+            self.remote_host,
+            self.remote_port,
+            self.bootstrap,
+            self.version,
+        )
+
+    def __getstate__(self):
+        return {
+            'id': self.id,
+            'local_host': self.local_host,
+            'local_port': self.local_port,
+            'remote_host': self.remote_host,
+            'remote_port': self.remote_port,
+            'bootstrap': self.bootstrap,
+            'version': self.version,
+        }
+
+class ProtocolCommand(object):
+    def __init__(self, node, protocol_version, command_code):
+        self.node = node
+        self.protocol_version = protocol_version
+        self.command_code = command_code
+    
+    def req(self):
+        raise NotImplementedError
+    
+    def on_req(self):
+        raise NotImplementedError
+
+    def res(self):
+        raise NotImplementedError
+
+    def on_res(self):
+        raise NotImplementedError
 
 class Node(object):
     # protocol version 1.0
