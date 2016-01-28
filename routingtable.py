@@ -9,74 +9,78 @@ import socket
 import asyncio
 import marshal
 
-class RoutingTable(object):
+class PrintColors(object):
+    VIOLET = '\033[95m'
+    BLUE = '\033[94m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    END = '\033[0m'
+
+class ContactList(object):
     def __init__(self):
-        self.version = 0
-        self.contacts = [] # [Contact(), ...]
+        self.items = []
+        self.items_id_map = {}
+        self.items_raddr_map = {}
 
     def add(self, c):
-        c.version = self.version
-        self.version += 1
-        self.contacts.append(c)
+        self.items.append(c)
+
+        if c.id is None:
+            raise ValueError('Contact it cannot be None')
+
+        self.items_id_map[c.id] = c
+        self.items_raddr_map[c.remote_host, c.remote_port] = c
         return c
 
     def get(self, id_or_remote_address):
+        c = None
+
         if isinstance(id_or_remote_address, (str, bytes)):
-            id = id_or_remote_address
+            c_id = id_or_remote_address
             
-            for c in self.contacts:
-                if c.id == id:
-                    return c
+            try:
+                c = self.items_id_map[c_id]
+            except KeyError as e:
+                pass
         elif isinstance(id_or_remote_address, (tuple, list)):
             remote_host, remote_port = id_or_remote_address
 
-            for c in self.contacts:
-                if c.remote_host == remote_host and c.remote_port == remote_port:
-                    return c
+            try:
+                c = self.items_map[remote_host, remote_port]
+            except KeyError as e:
+                pass
 
-        return None
-
-    def has(self, id_or_remote_address):
-        if isinstance(id_or_remote_address, (str, bytes)):
-            id = id_or_remote_address
-            
-            for c in self.contacts:
-                if c.id == id:
-                    return True
-        elif isinstance(id_or_remote_address, (tuple, list)):
-            remote_host, remote_port = id_or_remote_address
-
-            for c in self.contacts:
-                if c.remote_host == remote_host and c.remote_port == remote_port:
-                    return True
-
-        return False
+        return c
 
     def remove(self, c_or_id):
+        c = None
+
         if isinstance(c_or_id, Contact):
             c = c_or_id
-            self.contacts.remove(c)
-            return c
+            self.items.remove(c)
+            del self.items_id_map[c.id]
+            del self.items_raddr_map[c.remote_host, c.remote_port]
         else:
-            id = c_or_id
+            c_id = c_or_id
+            c = self.items_id_map.pop(c_id)
+            self.items.remove(c)
+            del self.items_raddr_map[c.remote_host, c.remote_port]
 
-            for c in self.all():
-                if c.id == id:
-                    self.contacts.remove(c)
-                    return c
+        return c
 
     def random(self, without_id=None, max_old=None):
         # filter contacts
         if without_id:
             if max_old:
-                contacts = [c for c in self.contacts if c.id != without_id and t - c.last_seen <= max_old]
+                contacts = [c for c in self.items if c.id != without_id and t - c.last_seen <= max_old]
             else:
-                contacts = [c for c in self.contacts if c.id != without_id]
+                contacts = [c for c in self.items if c.id != without_id]
         else:
             if max_old:
-                contacts = [c for c in self.contacts if t - c.last_seen <= max_old]
+                contacts = [c for c in self.items if t - c.last_seen <= max_old]
             else:
-                contacts = [c for c in self.contacts]
+                contacts = [c for c in self.items]
 
         # random contact
         if random.randint(0, 10) == 5:
@@ -96,16 +100,10 @@ class RoutingTable(object):
 
         return c
 
-    def all(self, version=0, max_old=None):
+    def all(self, version=0, max_old=None, max_contacts=None):
         contacts = []
 
-        for c in self.contacts:
-            # if c.version is None:
-            #     continue
-
-            # if c.version < version:
-            #     continue
-            
+        for c in self.items:
             if c.bootstrap:
                 contacts.append(c)
                 continue
@@ -115,6 +113,17 @@ class RoutingTable(object):
 
             contacts.append(c)
 
+        # sort by last seen time
+        t = time.time()
+        contacts.sort(key=lambda c: t - c.last_seen)
+
+        if max_contacts is not None:
+            if isinstance(max_contacts, int):
+                contacts = contacts[:max_contacts]
+            elif isinstance(max_contacts, float):
+                e = int(len(contacts) * max_contacts)
+                contacts = contacts[:e]
+
         return contacts
 
     def remove_older_than(self, max_old):
@@ -122,7 +131,15 @@ class RoutingTable(object):
 
         for c in self.contacts[:]:
             if t - c.last_seen > max_old:
+                print(PrintColors.YELLOW, 'remove_older_than', self, max_old, c, PrintColors.END)
                 self.contacts.remove(c)
+
+class RoutingTable(object):
+    def __init__(self):
+        self.version = 0
+        self.contacts = ContactList()
+        self.add_contacts = ContactList()
+        self.remove_contacts = ContactList()
 
 class Contact(object):
     def __init__(self, id=None, local_host=None, local_port=None, remote_host=None, remote_port=None, bootstrap=False, version=None):
@@ -131,8 +148,8 @@ class Contact(object):
         self.local_port = local_port
         self.remote_host = remote_host
         self.remote_port = remote_port
-        self.version = version
         self.bootstrap = bootstrap
+        self.version = version
         self.last_seen = None
 
     def __repr__(self):
@@ -212,8 +229,10 @@ class Node(object):
 
         self.loop.call_soon(self.discover_nodes)
         self.loop.call_soon(self.check_recv_buffer)
-        # self.loop.call_soon(self.check_last_seen_contacts)
 
+    #
+    # socket
+    #
     def check_recv_buffer(self):
         for remote_address, recv_buffer in self.recv_buffer.items():
             if not len(recv_buffer):
@@ -222,27 +241,6 @@ class Node(object):
             self.process_sock_data(b'', remote_address)
 
         self.loop.call_later(random.random(), self.check_recv_buffer)
-
-    # def check_last_seen_contacts(self):
-    #     for c in self.rt.all():
-    #         if c.bootstrap == True:
-    #             continue
-
-    #         if c.id == self.id:
-    #             c.last_seen = time.time()
-    #             continue
-
-    #         if not c.last_seen:
-    #             c.last_seen = time.time()
-
-    #         if time.time() - c.last_seen > 2 * 60.0:
-    #             print('check_last_seen_contacts removed [CONTACT]:', c)
-    #             self.rt.remove(c)
-
-    #     self.loop.call_later(
-    #         50.0 + random.random() * 10.0,
-    #         self.check_last_seen_contacts
-    #     )
 
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
@@ -335,14 +333,15 @@ class Node(object):
                 self.on_res_discover_nodes(remote_host, remote_port, res)
 
     #
-    # discover_nodes
+    # NODE_PROTOCOL_DISCOVER_NODES
     #
     def discover_nodes(self):
         # request
-        c = self.rt.random(without_id=self.id)
+        c = self.rt.contacts.random(without_id=self.id)
 
         if not c:
-            self.loop.call_later(10.0 + random.random() * 1.0, self.discover_nodes)
+            # self.loop.call_later(10.0 + random.random() * 1.0, self.discover_nodes)
+            self.loop.call_later(random.random() * 10.0, self.discover_nodes)
             return
 
         print('discover_nodes:', c)
@@ -375,17 +374,22 @@ class Node(object):
         self.send_message(message_data, c.remote_host, c.remote_port)
 
         # schedule next discover
-        self.loop.call_later(10.0 + random.random() * 1.0, self.discover_nodes)
+        # self.loop.call_later(10.0 + random.random() * 1.0, self.discover_nodes)
+        self.loop.call_later(random.random() * 10.0, self.discover_nodes)
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
         # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
+        c = self.rt.contacts.get(kwargs['id'])
 
-        c = self.rt.get(kwargs['id'])
-
-        if not c:
-            c = self.rt.get((remote_host, remote_port))
-
-            if not c:
+        # update contact's `last_seen`, or add contact
+        if c:
+            c.last_seen = time.time()
+        else:
+            c = self.rt.contacts.get((remote_host, remote_port))
+        
+            if c:
+                c.last_seen = time.time()
+            else:
                 c = Contact(
                     id = kwargs['id'],
                     local_host = kwargs['local_host'],
@@ -395,9 +399,10 @@ class Node(object):
                     bootstrap = kwargs.get('bootstrap', False),
                 )
 
-                self.rt.add(c)
-
-        c.last_seen = time.time()
+                # because `c` is requesting to discover nodes
+                # put it into known active contacts
+                c.last_seen = time.time()
+                self.rt.contacts.add(c)
 
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
@@ -410,7 +415,7 @@ class Node(object):
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=10.0)
+        node_contacts = self.rt.all(version=kwargs.get('version', 0), max_old=15.0, max_contacts=0.90)
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
@@ -465,6 +470,15 @@ class Node(object):
 
         # update discovered nodes/contacts
         for cd in res['contacts']:
+            x = False
+
+            for rc in self.rt.remove_contacts:
+                if rc.id == cd['id']:
+                    x = True
+
+            if x:
+                continue
+
             c = self.rt.get(cd['id'])
 
             if not c:
