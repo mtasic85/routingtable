@@ -611,27 +611,27 @@ class Node(object):
             
             if c:
                 c.id = node_id
-                c.last_seen = time.time()
+                # c.last_seen = time.time()
             else:
                 c = self.rt.contacts.get((remote_host, remote_port))
             
                 if c:
                     c.id = node_id
-                    c.last_seen = time.time()
+                    # c.last_seen = time.time()
                 else:
                     # add_contact
                     c = self.rt.add_contacts.get(node_id)
 
                     if c:
                         c.id = node_id
-                        c.last_seen = time.time()
+                        # c.last_seen = time.time()
                         print(PrintColors.GREEN, 'on_res_discover_nodes [0]:', c, PrintColors.END)
                     else:
                         c = self.rt.add_contacts.get((remote_host, remote_port))
                     
                         if c:
                             c.id = node_id
-                            c.last_seen = time.time()
+                            # c.last_seen = time.time()
                             print(PrintColors.GREEN, 'on_res_discover_nodes [1]:', c, PrintColors.END)
                         else:
                             # remove_contact
@@ -641,7 +641,7 @@ class Node(object):
                                 self.rt.remove_contacts.remove(c)
                                 self.rt.add_contacts.add(c)
                                 c.id = node_id
-                                c.last_seen = time.time()
+                                # c.last_seen = time.time()
                                 print(PrintColors.GREEN, 'on_res_discover_nodes [2]:', c, PrintColors.END)
                             else:
                                 c = self.rt.remove_contacts.get((remote_host, remote_port))
@@ -650,7 +650,7 @@ class Node(object):
                                     self.rt.remove_contacts.remove(c)
                                     self.rt.add_contacts.add(c)
                                     c.id = node_id
-                                    c.last_seen = time.time()
+                                    # c.last_seen = time.time()
                                     print(PrintColors.GREEN, 'on_res_discover_nodes [3]:', c, PrintColors.END)
                                 else:
                                     c = Contact(
