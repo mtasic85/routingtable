@@ -488,8 +488,7 @@ class Node(object):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.rt.contacts.add(c)
-
-                                print(PrintColors.GREEN, 'on_req_discover_nodes:', c, PrintColors.END)
+                                # print(PrintColors.GREEN, 'on_req_discover_nodes:', c, PrintColors.END)
 
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
@@ -593,7 +592,7 @@ class Node(object):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.rt.contacts.add(c)
-                                print(PrintColors.GREEN, 'on_res_discover_nodes:', c, PrintColors.END)
+                                # print(PrintColors.GREEN, 'on_res_discover_nodes:', c, PrintColors.END)
 
         # update discovered nodes/contacts
         for cd in contacts:
@@ -623,14 +622,14 @@ class Node(object):
                     if c:
                         c.id = node_id
                         # c.last_seen = time.time()
-                        print(PrintColors.GREEN, 'on_res_discover_nodes [0]:', c, PrintColors.END)
+                        # print(PrintColors.GREEN, 'on_res_discover_nodes [0]:', c, PrintColors.END)
                     else:
                         c = self.rt.add_contacts.get((remote_host, remote_port))
                     
                         if c:
                             c.id = node_id
                             # c.last_seen = time.time()
-                            print(PrintColors.GREEN, 'on_res_discover_nodes [1]:', c, PrintColors.END)
+                            # print(PrintColors.GREEN, 'on_res_discover_nodes [1]:', c, PrintColors.END)
                         else:
                             # remove_contact
                             c = self.rt.remove_contacts.get(node_id)
@@ -640,7 +639,7 @@ class Node(object):
                                 self.rt.add_contacts.add(c)
                                 c.id = node_id
                                 # c.last_seen = time.time()
-                                print(PrintColors.GREEN, 'on_res_discover_nodes [2]:', c, PrintColors.END)
+                                # print(PrintColors.GREEN, 'on_res_discover_nodes [2]:', c, PrintColors.END)
                             else:
                                 c = self.rt.remove_contacts.get((remote_host, remote_port))
                             
@@ -649,7 +648,7 @@ class Node(object):
                                     self.rt.add_contacts.add(c)
                                     c.id = node_id
                                     # c.last_seen = time.time()
-                                    print(PrintColors.GREEN, 'on_res_discover_nodes [3]:', c, PrintColors.END)
+                                    # print(PrintColors.GREEN, 'on_res_discover_nodes [3]:', c, PrintColors.END)
                                 else:
                                     c = Contact(
                                         id = node_id,
@@ -664,7 +663,7 @@ class Node(object):
                                     # put it into known active contacts
                                     c.last_seen = time.time()
                                     self.rt.add_contacts.add(c)
-                                    print(PrintColors.GREEN, 'on_res_discover_nodes [5]:', c, PrintColors.END)
+                                    # print(PrintColors.GREEN, 'on_res_discover_nodes [4]:', c, PrintColors.END)
 
     #
     # ping
@@ -738,7 +737,7 @@ class Node(object):
                     self.rt.contacts.add(c)
                     c.id = node_id
                     c.last_seen = time.time()
-                    print(PrintColors.GREEN, 'on_req_ping [0]:', c, PrintColors.END)
+                    # print(PrintColors.GREEN, 'on_req_ping [0]:', c, PrintColors.END)
                 else:
                     c = self.rt.add_contacts.get((remote_host, remote_port))
                 
@@ -747,7 +746,7 @@ class Node(object):
                         self.rt.contacts.add(c)
                         c.id = node_id
                         c.last_seen = time.time()
-                        print(PrintColors.GREEN, 'on_req_ping [1]:', c, PrintColors.END)
+                        # print(PrintColors.GREEN, 'on_req_ping [1]:', c, PrintColors.END)
                     else:
                         # remove_contact
                         c = self.rt.remove_contacts.get(node_id)
@@ -757,7 +756,7 @@ class Node(object):
                             self.rt.contacts.add(c)
                             c.id = node_id
                             c.last_seen = time.time()
-                            print(PrintColors.GREEN, 'on_req_ping [2]:', c, PrintColors.END)
+                            # print(PrintColors.GREEN, 'on_req_ping [2]:', c, PrintColors.END)
                         else:
                             c = self.rt.remove_contacts.get((remote_host, remote_port))
                         
@@ -766,7 +765,7 @@ class Node(object):
                                 self.rt.contacts.add(c)
                                 c.id = node_id
                                 c.last_seen = time.time()
-                                print(PrintColors.GREEN, 'on_req_ping [3]:', c, PrintColors.END)
+                                # print(PrintColors.GREEN, 'on_req_ping [3]:', c, PrintColors.END)
                             else:
                                 c = Contact(
                                     id = node_id,
@@ -781,7 +780,7 @@ class Node(object):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.rt.contacts.add(c)
-                                print(PrintColors.GREEN, 'on_req_ping [4]:', c, PrintColors.END)
+                                # print(PrintColors.GREEN, 'on_req_ping [4]:', c, PrintColors.END)
 
         # forward to res_discover_nodes
         self.res_ping(remote_host, remote_port, *args, **kwargs)
@@ -843,7 +842,7 @@ class Node(object):
                     self.rt.contacts.add(c)
                     c.id = node_id
                     c.last_seen = time.time()
-                    print(PrintColors.GREEN, 'on_res_ping [0]:', c, PrintColors.END)
+                    # print(PrintColors.GREEN, 'on_res_ping [0]:', c, PrintColors.END)
                 else:
                     c = self.rt.add_contacts.get((remote_host, remote_port))
                 
@@ -852,7 +851,7 @@ class Node(object):
                         self.rt.contacts.add(c)
                         c.id = node_id
                         c.last_seen = time.time()
-                        print(PrintColors.GREEN, 'on_res_ping [1]:', c, PrintColors.END)
+                        # print(PrintColors.GREEN, 'on_res_ping [1]:', c, PrintColors.END)
                     else:
                         # remove_contact
                         c = self.rt.remove_contacts.get(node_id)
@@ -862,7 +861,7 @@ class Node(object):
                             self.rt.contacts.add(c)
                             c.id = node_id
                             c.last_seen = time.time()
-                            print(PrintColors.GREEN, 'on_res_ping [2]:', c, PrintColors.END)
+                            # print(PrintColors.GREEN, 'on_res_ping [2]:', c, PrintColors.END)
                         else:
                             c = self.rt.remove_contacts.get((remote_host, remote_port))
                         
@@ -871,7 +870,7 @@ class Node(object):
                                 self.rt.contacts.add(c)
                                 c.id = node_id
                                 c.last_seen = time.time()
-                                print(PrintColors.GREEN, 'on_res_ping [3]:', c, PrintColors.END)
+                                # print(PrintColors.GREEN, 'on_res_ping [3]:', c, PrintColors.END)
                             else:
                                 c = Contact(
                                     id = node_id,
@@ -886,4 +885,4 @@ class Node(object):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.rt.contacts.add(c)
-                                print(PrintColors.GREEN, 'on_res_ping [4]:', c, PrintColors.END)
+                                # print(PrintColors.GREEN, 'on_res_ping [4]:', c, PrintColors.END)
