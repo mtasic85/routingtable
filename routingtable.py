@@ -256,13 +256,15 @@ class Node(object):
             if c.id == self.id:
                 continue
 
-            if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
+            # if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
+            if t - c.last_seen > 60.0:
                 self.rt.contacts.remove(c)
                 self.rt.remove_contacts.add(c)
                 print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
 
         for c in self.rt.remove_contacts.all():
-            if t - c.last_seen > 15.0 + 2.0 * (len(self.rt.contacts) + len(self.rt.add_contacts)):
+            # if t - c.last_seen > 15.0 + 2.0 * (len(self.rt.contacts) + len(self.rt.add_contacts)):
+            if t - c.last_seen > 120.0:
                 self.rt.remove_contacts.remove(c)
                 print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
 
@@ -709,7 +711,7 @@ class Node(object):
             self.send_message(message_data, c.remote_host, c.remote_port)
 
         # schedule next discover
-        self.loop.call_later(0.0 + random.random() * 1.0, self.ping)
+        self.loop.call_later(0.0 + random.random() * 0.5, self.ping)
     
     def on_req_ping(self, remote_host, remote_port, *args, **kwargs):
         node_id = kwargs['id']
