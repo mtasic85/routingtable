@@ -36,22 +36,29 @@ class ContactList(object):
         self.items_raddr_map[c.remote_host, c.remote_port] = c
         return c
 
-    def get(self, id_or_remote_address):
+    def get(self, id_or_remote_address_or_idx):
         c = None
 
-        if isinstance(id_or_remote_address, (str, bytes)):
-            c_id = id_or_remote_address
+        if isinstance(id_or_remote_address_or_idx, (str, bytes)):
+            c_id = id_or_remote_address_or_idx
             
             try:
                 c = self.items_id_map[c_id]
             except KeyError as e:
                 pass
-        elif isinstance(id_or_remote_address, (tuple, list)):
-            remote_host, remote_port = id_or_remote_address
+        elif isinstance(id_or_remote_address_or_idx, (tuple, list)):
+            remote_host, remote_port = id_or_remote_address_or_idx
 
             try:
                 c = self.items_raddr_map[remote_host, remote_port]
             except KeyError as e:
+                pass
+        elif isinstance(id_or_remote_address_or_idx, int):
+            i = id_or_remote_address_or_idx
+
+            try:
+                c = self.items[i]
+            except IndexError as e:
                 pass
 
         return c
@@ -188,13 +195,13 @@ class ProtocolCommand(object):
     def req(self):
         raise NotImplementedError
     
-    def on_req(self):
+    def on_req(self, remote_host, remote_port, *args, **kwargs):
         raise NotImplementedError
 
-    def res(self):
+    def res(self, remote_host, remote_port, *args, **kwargs):
         raise NotImplementedError
 
-    def on_res(self):
+    def on_res(self, remote_host, remote_port, res):
         raise NotImplementedError
 
 class Node(object):
@@ -233,6 +240,7 @@ class Node(object):
 
         self.loop.call_soon(self.discover_nodes)
         self.loop.call_soon(self.check_recv_buffer)
+        self.loop.call_soon(self.ping)
 
     #
     # socket
@@ -344,8 +352,7 @@ class Node(object):
         c = self.rt.contacts.random(without_id=self.id)
 
         if not c:
-            # self.loop.call_later(10.0 + random.random() * 1.0, self.discover_nodes)
-            self.loop.call_later(random.random() * 10.0, self.discover_nodes)
+            self.loop.call_later(0.0 + random.random() * 10.0, self.discover_nodes)
             return
 
         print('discover_nodes:', c)
@@ -382,10 +389,14 @@ class Node(object):
         self.loop.call_later(random.random() * 10.0, self.discover_nodes)
 
     def on_req_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
-        # print('on_req_discover_nodes:', remote_host, remote_port, args, kwargs)
-        c = self.rt.contacts.get(kwargs['id'])
+        node_id = kwargs['id']
+        local_host = kwargs['local_host']
+        local_port = kwargs['local_port']
+        bootstrap = kwargs.get('bootstrap', False)
 
         # update contact's `last_seen`, or add contact
+        c = self.rt.contacts.get(node_id)
+        
         if c:
             c.last_seen = time.time()
         else:
@@ -394,40 +405,61 @@ class Node(object):
             if c:
                 c.last_seen = time.time()
             else:
-                c = Contact(
-                    id = kwargs['id'],
-                    local_host = kwargs['local_host'],
-                    local_port = kwargs['local_port'],
-                    remote_host = remote_host,
-                    remote_port = remote_port,
-                    bootstrap = kwargs.get('bootstrap', False),
-                )
+                # add_contact
+                c = self.rt.add_contacts.get(node_id)
 
-                # because `c` is requesting to discover nodes
-                # put it into known active contacts
-                c.last_seen = time.time()
-                self.rt.contacts.add(c)
+                if c:
+                    self.rt.add_contacts.remove(c)
+                    c.last_seen = time.time()
+                else:
+                    c = self.rt.add_contacts.get((remote_host, remote_port))
+                
+                    if c:
+                        self.rt.add_contacts.remove(c)
+                        c.last_seen = time.time()
+                    else:
+                        # remove_contact
+                        c = self.rt.remove_contacts.get(node_id)
+
+                        if c:
+                            self.rt.remove_contacts.remove(c)
+                            c.last_seen = time.time()
+                        else:
+                            c = self.rt.remove_contacts.get((remote_host, remote_port))
+                        
+                            if c:
+                                self.rt.remove_contacts.remove(c)
+                                c.last_seen = time.time()
+                            else:
+                                c = Contact(
+                                    id = node_id,
+                                    local_host = local_host,
+                                    local_port = local_port,
+                                    remote_host = remote_host,
+                                    remote_port = remote_port,
+                                    bootstrap = bootstrap,
+                                )
+
+                                # because `c` is requesting to discover nodes
+                                # put it into known active contacts
+                                c.last_seen = time.time()
+                                self.rt.contacts.add(c)
 
         # forward to res_discover_nodes
         self.res_discover_nodes(remote_host, remote_port, *args, **kwargs)
 
     def res_discover_nodes(self, remote_host, remote_port, *args, **kwargs):
-        # forget old nodes which are not discovered recenly
-        self.rt.contacts.remove_older_than(60.0)
-
         # response
         node_id = self.id
-        node_local_host = self.listen_host
-        node_local_port = self.listen_port
-        # node_contacts = self.rt.contacts.all(version=kwargs.get('version', 0), max_old=15.0, max_contacts=0.90)
-        node_contacts = self.rt.contacts.all()
-        node_contacts = [c.__getstate__() for c in node_contacts]
+        local_host = self.listen_host
+        local_port = self.listen_port
+        contacts = [c.__getstate__() for c in self.rt.contacts.all()]
 
         res = {
             'id': node_id,
-            'local_host': node_local_host,
-            'local_port': node_local_port,
-            'contacts': node_contacts,
+            'local_host': local_host,
+            'local_port': local_port,
+            'contacts': contacts,
         }
 
         res_data = marshal.dumps(res)
@@ -447,72 +479,313 @@ class Node(object):
         self.send_message(message_data, remote_host, remote_port)
 
     def on_res_discover_nodes(self, remote_host, remote_port, res):
-        # print('on_res_discover_nodes:', remote_host, remote_port, res)
-        print('on_res_discover_nodes len(res[\'contacts\']):', remote_host, remote_port, len(res['contacts']), len(self.rt.contacts))
+        node_id = res['id']
+        local_host = res['local_host']
+        local_port = res['local_port']
+        contacts = res['contacts']
+        bootstrap = res.get('bootstrap', False)
 
-        # update requesting node/contact in routing table
-        c = self.rt.contacts.get(res['id'])
+        print('on_res_discover_nodes:', remote_host, remote_port, len(contacts), (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
 
+        # update contact's `last_seen`, or add contact
+        c = self.rt.contacts.get(node_id)
+        
         if c:
             c.last_seen = time.time()
         else:
             c = self.rt.contacts.get((remote_host, remote_port))
-
+        
             if c:
                 c.last_seen = time.time()
             else:
-                c = Contact(
-                    id = res['id'],
-                    local_host = res['local_host'],
-                    local_port = res['local_port'],
-                    remote_host = remote_host,
-                    remote_port = remote_port,
-                    bootstrap = res.get('bootstrap', False),
-                )
+                # add_contact
+                c = self.rt.add_contacts.get(node_id)
 
-                # because `c` was know when was requested from it
-                # to send its nodes in discovery process,
-                # add this `c` to known contacts if it was removed
-                # from there by any chance
-                c.last_seen = time.time()
-                self.rt.contacts.add(c)
+                if c:
+                    self.rt.add_contacts.remove(c)
+                    c.last_seen = time.time()
+                else:
+                    c = self.rt.add_contacts.get((remote_host, remote_port))
+                
+                    if c:
+                        self.rt.add_contacts.remove(c)
+                        c.last_seen = time.time()
+                    else:
+                        # remove_contact
+                        c = self.rt.remove_contacts.get(node_id)
 
-        # forget old nodes which are not discovered recenly
-        self.rt.contacts.remove_older_than(60.0)
+                        if c:
+                            self.rt.remove_contacts.remove(c)
+                            c.last_seen = time.time()
+                        else:
+                            c = self.rt.remove_contacts.get((remote_host, remote_port))
+                        
+                            if c:
+                                self.rt.remove_contacts.remove(c)
+                                c.last_seen = time.time()
+                            else:
+                                c = Contact(
+                                    id = node_id,
+                                    local_host = local_host,
+                                    local_port = local_port,
+                                    remote_host = remote_host,
+                                    remote_port = remote_port,
+                                    bootstrap = bootstrap,
+                                )
+
+                                # because `c` is requesting to discover nodes
+                                # put it into known active contacts
+                                c.last_seen = time.time()
+                                self.rt.contacts.add(c)
 
         # update discovered nodes/contacts
-        for cd in res['contacts']:
-            c = self.rt.contacts.get(cd['id'])
+        for cd in contacts:
+            node_id = cd['id']
+            local_host = cd['local_host']
+            local_port = cd['local_port']
+            remote_host = cd['remote_host']
+            remote_port = cd['remote_port']
+            bootstrap = cd.get('bootstrap', False)
 
+            # update contact's `last_seen`, or add contact
+            c = self.rt.contacts.get(node_id)
+            
             if c:
                 c.last_seen = time.time()
             else:
-                c = self.rt.contacts.get((cd['remote_host'], cd['remote_port']))
-
+                c = self.rt.contacts.get((remote_host, remote_port))
+            
                 if c:
                     c.last_seen = time.time()
                 else:
-                    c = Contact(
-                        id = cd['id'],
-                        local_host = cd['local_host'],
-                        local_port = cd['local_port'],
-                        remote_host = cd['remote_host'],
-                        remote_port = cd['remote_port'],
-                        bootstrap = cd.get('bootstrap', False),
-                    )
+                    # add_contact
+                    c = self.rt.add_contacts.get(node_id)
 
-                    c.last_seen = time.time()
-                    self.rt.add_contacts.add(c)
+                    if c:
+                        self.rt.add_contacts.remove(c)
+                        c.last_seen = time.time()
+                    else:
+                        c = self.rt.add_contacts.get((remote_host, remote_port))
+                    
+                        if c:
+                            self.rt.add_contacts.remove(c)
+                            c.last_seen = time.time()
+                        else:
+                            # remove_contact
+                            c = self.rt.remove_contacts.get(node_id)
 
-if __name__ == '__main__':
-    # event loop
-    loop = asyncio.get_event_loop()
+                            if c:
+                                self.rt.remove_contacts.remove(c)
+                                c.last_seen = time.time()
+                            else:
+                                c = self.rt.remove_contacts.get((remote_host, remote_port))
+                            
+                                if c:
+                                    self.rt.remove_contacts.remove(c)
+                                    c.last_seen = time.time()
+                                else:
+                                    c = Contact(
+                                        id = node_id,
+                                        local_host = local_host,
+                                        local_port = local_port,
+                                        remote_host = remote_host,
+                                        remote_port = remote_port,
+                                        bootstrap = bootstrap,
+                                    )
 
-    node = Node(loop)
-    node.rt.add(Contact(str(uuid.uuid4()), '127.0.0.1', 6633, '127.0.0.1', 6633))
-    node.rt.add(Contact(str(uuid.uuid4()), '127.0.0.1', 6634, '127.0.0.1', 6633))
-    node.rt.add(Contact(str(uuid.uuid4()), '127.0.0.1', 6635, '127.0.0.1', 6633))
+                                    # because `c` is requesting to discover nodes
+                                    # put it into known active contacts
+                                    c.last_seen = time.time()
+                                    self.rt.contacts.add(c)
+
+    #
+    # ping
+    #
+    def ping(self):
+        node_id = self.id
+        local_host = self.listen_host
+        local_port = self.listen_port
+
+        if random.random() < 0.5:
+            # ping contact to be added
+            c = self.rt.add_contacts.get(0)
+        else:
+            # ping known contact
+            c = self.rt.contacts.random()
+
+        if c:
+            print('ping:', c)
+            
+            args = ()
+            kwargs = {
+                'id': node_id,
+                'local_host': local_host,
+                'local_port': local_port,
+            }
+
+            res = (args, kwargs)
+            req_data = marshal.dumps(res)
+
+            # message
+            message_data = struct.pack(
+                '!BBBB',
+                self.NODE_PROTOCOL_VERSION_MAJOR,
+                self.NODE_PROTOCOL_VERSION_MINOR,
+                self.NODE_PROTOCOL_REQ,
+                self.NODE_PROTOCOL_PING,
+            )
+
+            message_data += req_data
+
+            # send message
+            self.send_message(message_data, c.remote_host, c.remote_port)
+
+        # schedule next discover
+        self.loop.call_later(0.0 + random.random() * 1.0, self.ping)
     
-    # run loop
-    loop.run_forever()
-    loop.close()
+    def on_req_ping(self, remote_host, remote_port, *args, **kwargs):
+        node_id = kwargs['id']
+        local_host = kwargs['local_host']
+        local_port = kwargs['local_port']
+        bootstrap = kwargs.get('bootstrap', False)
+
+        # update contact's `last_seen`, or add contact
+        c = self.rt.contacts.get(node_id)
+        
+        if c:
+            c.last_seen = time.time()
+        else:
+            c = self.rt.contacts.get((remote_host, remote_port))
+        
+            if c:
+                c.last_seen = time.time()
+            else:
+                # add_contact
+                c = self.rt.add_contacts.get(node_id)
+
+                if c:
+                    self.rt.add_contacts.remove(c)
+                    c.last_seen = time.time()
+                else:
+                    c = self.rt.add_contacts.get((remote_host, remote_port))
+                
+                    if c:
+                        self.rt.add_contacts.remove(c)
+                        c.last_seen = time.time()
+                    else:
+                        # remove_contact
+                        c = self.rt.remove_contacts.get(node_id)
+
+                        if c:
+                            self.rt.remove_contacts.remove(c)
+                            c.last_seen = time.time()
+                        else:
+                            c = self.rt.remove_contacts.get((remote_host, remote_port))
+                        
+                            if c:
+                                self.rt.remove_contacts.remove(c)
+                                c.last_seen = time.time()
+                            else:
+                                c = Contact(
+                                    id = node_id,
+                                    local_host = local_host,
+                                    local_port = local_port,
+                                    remote_host = remote_host,
+                                    remote_port = remote_port,
+                                    bootstrap = bootstrap,
+                                )
+
+                                # because `c` is requesting to discover nodes
+                                # put it into known active contacts
+                                c.last_seen = time.time()
+                                self.rt.contacts.add(c)
+
+        # forward to res_discover_nodes
+        self.res_ping(remote_host, remote_port, *args, **kwargs)
+
+    def res_ping(self, remote_host, remote_port, *args, **kwargs):
+        # response
+        node_id = self.id
+        local_host = self.listen_host
+        local_port = self.listen_port
+        
+        res = {
+            'id': node_id,
+            'local_host': local_host,
+            'local_port': local_port,
+        }
+
+        res_data = marshal.dumps(res)
+
+        # message data
+        message_data = struct.pack(
+            '!BBBB',
+            self.NODE_PROTOCOL_VERSION_MAJOR,
+            self.NODE_PROTOCOL_VERSION_MINOR,
+            self.NODE_PROTOCOL_RES,
+            self.NODE_PROTOCOL_PING,
+        )
+
+        message_data += res_data
+
+        # send message
+        self.send_message(message_data, remote_host, remote_port)
+
+    def on_res_ping(self, remote_host, remote_port, res):
+        print('on_res_ping:', remote_host, remote_port, (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
+
+        node_id = res['id']
+        local_host = res['local_host']
+        local_port = res['local_port']
+        bootstrap = res.get('bootstrap', False)
+
+        # update contact's `last_seen`, or add contact
+        c = self.rt.contacts.get(node_id)
+        
+        if c:
+            c.last_seen = time.time()
+        else:
+            c = self.rt.contacts.get((remote_host, remote_port))
+        
+            if c:
+                c.last_seen = time.time()
+            else:
+                # add_contact
+                c = self.rt.add_contacts.get(node_id)
+
+                if c:
+                    self.rt.add_contacts.remove(c)
+                    c.last_seen = time.time()
+                else:
+                    c = self.rt.add_contacts.get((remote_host, remote_port))
+                
+                    if c:
+                        self.rt.add_contacts.remove(c)
+                        c.last_seen = time.time()
+                    else:
+                        # remove_contact
+                        c = self.rt.remove_contacts.get(node_id)
+
+                        if c:
+                            self.rt.remove_contacts.remove(c)
+                            c.last_seen = time.time()
+                        else:
+                            c = self.rt.remove_contacts.get((remote_host, remote_port))
+                        
+                            if c:
+                                self.rt.remove_contacts.remove(c)
+                                c.last_seen = time.time()
+                            else:
+                                c = Contact(
+                                    id = node_id,
+                                    local_host = local_host,
+                                    local_port = local_port,
+                                    remote_host = remote_host,
+                                    remote_port = remote_port,
+                                    bootstrap = bootstrap,
+                                )
+
+                                # because `c` is requesting to discover nodes
+                                # put it into known active contacts
+                                c.last_seen = time.time()
+                                self.rt.contacts.add(c)
