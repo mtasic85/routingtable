@@ -256,15 +256,15 @@ class Node(object):
             if c.id == self.id:
                 continue
 
-            # if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
-            if t - c.last_seen > 60.0:
+            if t - c.last_seen > 15.0 + (len(self.rt.contacts) + len(self.rt.add_contacts)) / 2.0:
+            # if t - c.last_seen > 60.0:
                 self.rt.contacts.remove(c)
                 self.rt.remove_contacts.add(c)
                 print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
 
         for c in self.rt.remove_contacts.all():
-            # if t - c.last_seen > 15.0 + 2.0 * (len(self.rt.contacts) + len(self.rt.add_contacts)):
-            if t - c.last_seen > 120.0:
+            if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
+            # if t - c.last_seen > 120.0:
                 self.rt.remove_contacts.remove(c)
                 print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
 
