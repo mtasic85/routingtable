@@ -158,7 +158,7 @@ class Contact(object):
         self.last_seen = None
 
     def __repr__(self):
-        return '<{} id={} local={}:{} remote={}:{} bootstrap={} ver={}>'.format(
+        return '<{}:{} local={}:{} remote={}:{} bootstrap={}>'.format(
             self.__class__.__name__,
             self.id,
             self.local_host,
@@ -166,7 +166,6 @@ class Contact(object):
             self.remote_host,
             self.remote_port,
             self.bootstrap,
-            self.version,
         )
 
     def __getstate__(self):
@@ -211,7 +210,7 @@ class Node(object):
     NODE_PROTOCOL_PING = 0
     NODE_PROTOCOL_DISCOVER_NODES = 1
 
-    def __init__(self, loop, id=None, listen_host='127.0.0.1', listen_port=6633, bootstrap=False):
+    def __init__(self, loop, id=None, listen_host='0.0.0.0', listen_port=6633, bootstrap=False):
         self.loop = loop
         
         if id == None:
@@ -420,7 +419,8 @@ class Node(object):
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
-        node_contacts = self.rt.contacts.all(version=kwargs.get('version', 0), max_old=15.0, max_contacts=0.90)
+        # node_contacts = self.rt.contacts.all(version=kwargs.get('version', 0), max_old=15.0, max_contacts=0.90)
+        node_contacts = self.rt.contacts.all()
         node_contacts = [c.__getstate__() for c in node_contacts]
 
         res = {
