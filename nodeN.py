@@ -20,7 +20,7 @@ for i in range(100):
 
     for cd in node_config['contacts']:
         c = Contact(**cd)
-        node.rt.contacts.add(c)
+        node.rt.add_contacts.add(c)
 
 # run loop
 loop.run_forever()
