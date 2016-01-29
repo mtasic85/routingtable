@@ -249,24 +249,24 @@ class Node(object):
         self.loop.call_soon(self.remove_dead_contacts)
 
     def remove_dead_contacts(self):
-        print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts.all()), len(self.rt.remove_contacts.all()), PrintColors.END)
+        print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts), len(self.rt.remove_contacts), PrintColors.END)
         t = time.time()
 
         for c in self.rt.contacts.all():
             if c.id == self.id:
                 continue
 
-            if t - c.last_seen > 15.0:
+            if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
                 self.rt.contacts.remove(c)
                 self.rt.remove_contacts.add(c)
                 print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
 
         for c in self.rt.remove_contacts.all():
-            if t - c.last_seen > 30.0:
+            if t - c.last_seen > 15.0 + 2.0 * (len(self.rt.contacts) + len(self.rt.add_contacts)):
                 self.rt.remove_contacts.remove(c)
                 print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
 
-        self.loop.call_later(15.0 + random.random() * 1.0, self.remove_dead_contacts)
+        self.loop.call_later(15.0 + random.random() * 15.0, self.remove_dead_contacts)
 
     #
     # socket
@@ -390,7 +390,7 @@ class Node(object):
             self.loop.call_later(0.0 + random.random() * 10.0, self.discover_nodes)
             return
 
-        print('discover_nodes:', c)
+        # print('discover_nodes:', c)
         node_id = self.id
         node_local_host = self.listen_host
         node_local_port = self.listen_port
@@ -531,7 +531,7 @@ class Node(object):
         contacts = res['contacts']
         bootstrap = res.get('bootstrap', False)
 
-        print('on_res_discover_nodes:', remote_host, remote_port, len(contacts), (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
+        # print('on_res_discover_nodes:', remote_host, remote_port, len(contacts), (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
 
         # update contact's `last_seen`, or add contact
         c = self.rt.contacts.get(node_id)
@@ -682,7 +682,7 @@ class Node(object):
             c = self.rt.contacts.random(without_id=self.id)
 
         if c:
-            print('ping:', c)
+            # print('ping:', c)
             
             args = ()
             kwargs = {
@@ -815,7 +815,7 @@ class Node(object):
         self.send_message(message_data, remote_host, remote_port)
 
     def on_res_ping(self, remote_host, remote_port, res):
-        print('on_res_ping:', remote_host, remote_port, (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
+        # print('on_res_ping:', remote_host, remote_port, (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
 
         node_id = res['id']
         local_host = res['local_host']
