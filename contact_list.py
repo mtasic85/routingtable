@@ -77,22 +77,6 @@ class ContactList(object):
             else:
                 contacts = [c for c in self.items]
 
-        # # random contact
-        # if random.randint(0, 10) == 5:
-        #     # chance is 10% to return boostrap contact
-        #     # this is good because if all nodes fail, bootstrap should be
-        #     # the most reliable node
-        #     c = None
-
-        #     for n in self.items:
-        #         if n.bootstrap:
-        #             c = n
-        #             break
-        # elif len(contacts):
-        #     c = random.choice(contacts)
-        # else:
-        #     c = None
-
         if len(contacts):
             c = random.choice(contacts)
         else:
@@ -100,7 +84,7 @@ class ContactList(object):
 
         return c
 
-    def all(self, version=0, max_old=None, max_contacts=None):
+    def all(self, version=0, max_old=None):
         contacts = []
 
         for c in self.items:
@@ -108,30 +92,7 @@ class ContactList(object):
                 contacts.append(c)
                 continue
 
-            # if max_old and c.last_seen and time.time() - c.last_seen > max_old:
-            #     continue
-
+            # FIXME: use version and max_old
             contacts.append(c)
 
-        # # sort by last seen time
-        # t = time.time()
-        # contacts.sort(key=lambda c: t - c.last_seen)
-
-        # if max_contacts is not None:
-        #     if isinstance(max_contacts, int):
-        #         contacts = contacts[:max_contacts]
-        #     elif isinstance(max_contacts, float):
-        #         e = int(len(contacts) * max_contacts)
-        #         contacts = contacts[:e]
-
         return contacts
-
-    def remove_older_than(self, max_old):
-        t = time.time()
-
-        for c in self.items[:]:
-            if t - c.last_seen > max_old:
-                print(PrintColors.YELLOW, 'remove_older_than', self, max_old, c, PrintColors.END)
-                self.contacts.remove(c)
-                del self.items_id_map[c.id]
-                del self.items_raddr_map[c.remote_host, c.remote_port]

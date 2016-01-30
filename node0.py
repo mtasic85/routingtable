@@ -1,7 +1,8 @@
 import json
 import asyncio
 
-from routingtable import Node, Contact
+from node import Node
+from contact import Contact
 
 # event loop
 loop = asyncio.get_event_loop()
