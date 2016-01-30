@@ -11,7 +11,8 @@ import marshal
 
 from print_colors import PrintColors
 from contact import Contact
-from contact_list import ContactList
+from routing_table import RoutingTable
+from protocol_command import ProtocolCommand
 from ping_protocol_command import PingProtocolCommand
 from discover_protocol_command import DiscoverProtocolCommand
 
@@ -212,13 +213,13 @@ class Node(object):
         protocol_version_major, protocol_version_minor, protocol_message_type, protocol_command_code = struct.unpack('!BBBB', message_header)
         protocol_command = self.get_protocol_command(protocol_version_major, protocol_version_minor, protocol_command_code)
 
-        if protocol_message_type == self.NODE_PROTOCOL_REQ:
+        if protocol_message_type == ProtocolCommand.PROTOCOL_REQ:
             if message_data:
                 args, kwargs = marshal.loads(message_data)
             else:
                 args, kwargs = (), {}
 
             protocol_command.on_req(remote_host, remote_port, *args, **kwargs)
-        elif protocol_message_type == self.NODE_PROTOCOL_RES:
+        elif protocol_message_type == ProtocolCommand.PROTOCOL_RES:
             obj = marshal.loads(message_data)
             protocol_command.on_res(remote_host, remote_port, obj)

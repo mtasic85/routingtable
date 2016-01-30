@@ -1,5 +1,7 @@
 __all__ = ['ContactList']
 
+import random
+
 from contact import Contact
 
 class ContactList(object):
