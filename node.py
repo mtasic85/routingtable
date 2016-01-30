@@ -28,20 +28,22 @@ class Node(object):
         self.listen_port = listen_port
         self.bootstrap = bootstrap
 
+        # routing table
+        self.rt = RoutingTable()
+
         # default protocol_commands
         self.protocol_commands = {}
         protocol_command = PingProtocolCommand(self, 1, 0, 0)
         self.add_protocol_command(protocol_command)
         protocol_command = DiscoverProtocolCommand(self, 1, 0, 1)
         self.add_protocol_command(protocol_command)
+        
+        # socket
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((self.listen_host, self.listen_port))
 
         self.recv_buffer = {} # {(remote_host: remote_port): [socket_data, ...]}
         self.recv_packs = {} # {msg_id: {pack_index: pack_data}}
-        self.rt = RoutingTable()
-        
-        # udp socket
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind((self.listen_host, self.listen_port))
         self.loop.add_reader(self.sock, self.rect_sock_data)
 
         # tasks
