@@ -30,5 +30,4 @@ class Contact(object):
             'remote_host': self.remote_host,
             'remote_port': self.remote_port,
             'bootstrap': self.bootstrap,
-            'version': self.version,
         }

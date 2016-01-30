@@ -46,8 +46,6 @@ class Node(object):
 
         # tasks
         self.loop.call_soon(self.check_recv_buffer)
-        # self.loop.call_soon(self.ping)
-        # self.loop.call_soon(self.discover_nodes)
         self.loop.call_soon(self.remove_dead_contacts)
 
     #
@@ -71,8 +69,11 @@ class Node(object):
         )
 
         self.protocol_commands[k] = protocol_command
+        protocol_command.start()
 
     def remove_protocol_command(self, protocol_command):
+        protocol_command.stop()
+
         k = (
             protocol_command.protocol_major_version,
             protocol_command.protocol_minor_version,
@@ -84,12 +85,6 @@ class Node(object):
     #
     # tasks
     #
-    # def ping(self):
-    #     self.loop.call_later(0.0 + random.random() * 0.5, self.ping)
-
-    # def discover_nodes(self):
-    #     self.loop.call_later(5.0 + random.random() * 10.0, self.discover_nodes)
-
     def remove_dead_contacts(self):
         print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts), len(self.rt.remove_contacts), PrintColors.END)
         t = time.time()
