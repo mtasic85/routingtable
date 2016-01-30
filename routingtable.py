@@ -214,7 +214,7 @@ class Node(object):
     NODE_PROTOCOL_VERSION_MAJOR = 1
     NODE_PROTOCOL_VERSION_MINOR = 0
 
-    # protocol types
+    # protocol message types
     NODE_PROTOCOL_REQ = 0
     NODE_PROTOCOL_RES = 1
 
@@ -327,11 +327,25 @@ class Node(object):
 
         self.parse_message(msg, remote_host, remote_port)
 
+    def build_message(self, protocol_major_version, protocol_minor_version, protocol_message_type, protocol_command_code, obj):
+        obj_data = marshal.dumps(obj)
+
+        message_data = struct.pack(
+            '!BBBB',
+            protocol_major_version,
+            protocol_minor_version,
+            protocol_message_type,
+            protocol_command_code,
+        )
+
+        message_data += obj_data
+        return message_data
+
     def send_message(self, message_data, remote_host, remote_port):
-        for pack in self.build_message(message_data):
+        for pack in self.build_packs(message_data):
             self.sock.sendto(pack, (remote_host, remote_port))
 
-    def build_message(self, message_data):
+    def build_packs(self, message_data):
         message_id = random.randint(0, 2 ** 64)
         step = 1400 - 3 * 4
         pack_index = 0
@@ -403,18 +417,15 @@ class Node(object):
         }
 
         res = (args, kwargs)
-        req_data = marshal.dumps(res)
 
-        # message
-        message_data = struct.pack(
-            '!BBBB',
+        # build message
+        message_data = self.build_message(
             self.NODE_PROTOCOL_VERSION_MAJOR,
             self.NODE_PROTOCOL_VERSION_MINOR,
             self.NODE_PROTOCOL_REQ,
             self.NODE_PROTOCOL_DISCOVER_NODES,
+            res,
         )
-
-        message_data += req_data
 
         # send message
         self.send_message(message_data, c.remote_host, c.remote_port)
@@ -507,18 +518,14 @@ class Node(object):
             'contacts': contacts,
         }
 
-        res_data = marshal.dumps(res)
-
-        # message data
-        message_data = struct.pack(
-            '!BBBB',
+        # build message
+        message_data = self.build_message(
             self.NODE_PROTOCOL_VERSION_MAJOR,
             self.NODE_PROTOCOL_VERSION_MINOR,
             self.NODE_PROTOCOL_RES,
             self.NODE_PROTOCOL_DISCOVER_NODES,
+            res,
         )
-
-        message_data += res_data
 
         # send message
         self.send_message(message_data, remote_host, remote_port)
@@ -691,18 +698,15 @@ class Node(object):
             }
 
             res = (args, kwargs)
-            req_data = marshal.dumps(res)
-
-            # message
-            message_data = struct.pack(
-                '!BBBB',
+            
+            # build message
+            message_data = self.build_message(
                 self.NODE_PROTOCOL_VERSION_MAJOR,
                 self.NODE_PROTOCOL_VERSION_MINOR,
                 self.NODE_PROTOCOL_REQ,
-                self.NODE_PROTOCOL_PING,
+                self.NODE_PROTOCOL_DISCOVER_NODES,
+                res,
             )
-
-            message_data += req_data
 
             # send message
             self.send_message(message_data, c.remote_host, c.remote_port)
@@ -797,18 +801,14 @@ class Node(object):
             'local_port': local_port,
         }
 
-        res_data = marshal.dumps(res)
-
-        # message data
-        message_data = struct.pack(
-            '!BBBB',
+        # build message
+        message_data = self.build_message(
             self.NODE_PROTOCOL_VERSION_MAJOR,
             self.NODE_PROTOCOL_VERSION_MINOR,
             self.NODE_PROTOCOL_RES,
-            self.NODE_PROTOCOL_PING,
+            self.NODE_PROTOCOL_DISCOVER_NODES,
+            res,
         )
-
-        message_data += res_data
 
         # send message
         self.send_message(message_data, remote_host, remote_port)
