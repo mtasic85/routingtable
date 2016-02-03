@@ -3,6 +3,7 @@ __all__ = ['ContactList']
 import random
 
 from contact import Contact
+from print_colors import PrintColors
 
 class ContactList(object):
     def __init__(self):
@@ -13,12 +14,24 @@ class ContactList(object):
     def __len__(self):
         return len(self.items)
 
-    def add(self, c):
-        self.items.append(c)
+    # def add(self, c):
+    #     self.items.append(c)
 
+    #     if c.id is None and not c.bootstrap:
+    #         raise ValueError('Contact it cannot be None, it its is not bootstrap node')
+
+    #     self.items_id_map[c.id] = c
+    #     self.items_raddr_map[c.remote_host, c.remote_port] = c
+    #     return c
+    
+    def add(self, c):
         if c.id is None and not c.bootstrap:
             raise ValueError('Contact it cannot be None, it its is not bootstrap node')
 
+        if c.id in self.items_id_map:
+            raise ValueError('Bootstrap contact with id=None is already known')
+
+        self.items.append(c)
         self.items_id_map[c.id] = c
         self.items_raddr_map[c.remote_host, c.remote_port] = c
         return c

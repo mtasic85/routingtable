@@ -12,8 +12,11 @@ class ProtocolCommand(object):
     def __init__(self, node, protocol_major_version, protocol_minor_version, protocol_command_code):
         self.node = node
 
-        if protocol_major_version is None: protocol_major_version = self.DEFAULT_PROTOCOL_VERSION_MAJOR
-        if protocol_minor_version is None: protocol_minor_version = self.DEFAULT_PROTOCOL_VERSION_MINOR
+        if protocol_major_version is None:
+            protocol_major_version = self.DEFAULT_PROTOCOL_VERSION_MAJOR
+        
+        if protocol_minor_version is None:
+            protocol_minor_version = self.DEFAULT_PROTOCOL_VERSION_MINOR
 
         self.protocol_major_version = protocol_major_version
         self.protocol_minor_version = protocol_minor_version

@@ -34,8 +34,10 @@ class Node(object):
 
         # default protocol_commands
         self.protocol_commands = {}
+        
         protocol_command = PingProtocolCommand(self, 1, 0, 0)
         self.add_protocol_command(protocol_command)
+        
         protocol_command = DiscoverProtocolCommand(self, 1, 0, 1)
         self.add_protocol_command(protocol_command)
         
