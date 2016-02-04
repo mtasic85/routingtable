@@ -1,6 +1,6 @@
 __all__ = ['DiscoverProtocolCommand']
 
-import gc
+# import gc
 import time
 import random
 
@@ -298,5 +298,3 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                     # put it into known active contacts
                                     c.last_seen = time.time()
                                     self.node.rt.add_contacts.add(c)
-
-        # print('disco', len(self.node.rt.contacts), len(self.node.rt.add_contacts), len(self.node.rt.remove_contacts))
