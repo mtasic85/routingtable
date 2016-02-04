@@ -36,6 +36,11 @@ class DateTimeProtocolCommand(ProtocolCommand):
             res,
         )
 
+        # force del
+        del args
+        del kwargs
+        del res
+
         # send message
         self.node.send_message(message_data, c.remote_host, c.remote_port)
 
@@ -60,6 +65,9 @@ class DateTimeProtocolCommand(ProtocolCommand):
             self.protocol_command_code,
             res,
         )
+
+        # force del
+        del res
 
         # send message
         self.node.send_message(message_data, remote_host, remote_port)

@@ -16,7 +16,7 @@ loop = asyncio.get_event_loop()
 with open('nodeN.json', 'r') as f:
     node_config = json.load(f)
 
-for i in range(100):
+for i in range(1000):
     node = Node(
         loop,
         id = node_config['id'],

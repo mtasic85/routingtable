@@ -72,23 +72,16 @@ class ContactList(object):
 
         return c
 
-    def random(self, without_id=None, max_old=None):
-        # filter contacts
-        if without_id:
-            if max_old:
-                contacts = [c for c in self.items if c.id != without_id and t - c.last_seen <= max_old]
-            else:
-                contacts = [c for c in self.items if c.id != without_id]
-        else:
-            if max_old:
-                contacts = [c for c in self.items if t - c.last_seen <= max_old]
-            else:
-                contacts = [c for c in self.items]
+    def random(self, without_id=None):
+        if not len(self.items):
+            return None
 
-        if len(contacts):
-            c = random.choice(contacts)
-        else:
-            c = None
+        # filter contacts
+        i = random.randint(0, len(self.items) - 1)
+        c = self.items[i]
+
+        if c.id == without_id:
+            return None
 
         return c
 

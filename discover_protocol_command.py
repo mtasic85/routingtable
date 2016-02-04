@@ -1,5 +1,6 @@
 __all__ = ['DiscoverProtocolCommand']
 
+import gc
 import time
 import random
 
@@ -45,6 +46,11 @@ class DiscoverProtocolCommand(ProtocolCommand):
             self.protocol_command_code,
             res,
         )
+
+        # force del
+        del args
+        del kwargs
+        del res
 
         # send message
         self.node.send_message(message_data, c.remote_host, c.remote_port)
@@ -150,8 +156,15 @@ class DiscoverProtocolCommand(ProtocolCommand):
             res,
         )
 
+        # force del
+        del contacts
+        del res
+
         # send message
         self.node.send_message(message_data, remote_host, remote_port)
+
+        # print('gc.is_tracked(contacts) =', gc.is_tracked(contacts))
+        # print('gc.collect() =', gc.collect())
 
     def on_res(self, remote_host, remote_port, res):
         node_id = res['id']
@@ -285,3 +298,5 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                     # put it into known active contacts
                                     c.last_seen = time.time()
                                     self.node.rt.add_contacts.add(c)
+
+        # print('disco', len(self.node.rt.contacts), len(self.node.rt.add_contacts), len(self.node.rt.remove_contacts))
