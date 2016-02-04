@@ -3,6 +3,7 @@ __all__ = ['DiscoverProtocolCommand']
 import time
 import random
 
+from print_colors import PrintColors
 from contact import Contact
 from protocol_command import ProtocolCommand
 
@@ -78,6 +79,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                     self.node.rt.contacts.add(c)
                     c.id = node_id
                     c.last_seen = time.time()
+                    print(PrintColors.GREEN + 'new contact [DISCOVERY REQ]:', self.node, c, PrintColors.END)
                 else:
                     c = self.node.rt.add_contacts.get((remote_host, remote_port))
                 
@@ -86,6 +88,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                         self.node.rt.contacts.add(c)
                         c.id = node_id
                         c.last_seen = time.time()
+                        print(PrintColors.GREEN + 'new contact [DISCOVERY REQ]:', self.node, c, PrintColors.END)
                     else:
                         # remove_contact
                         c = self.node.rt.remove_contacts.get(node_id)
@@ -95,6 +98,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                             self.node.rt.contacts.add(c)
                             c.id = node_id
                             c.last_seen = time.time()
+                            print(PrintColors.GREEN + 'new contact [DISCOVERY REQ]:', self.node, c, PrintColors.END)
                         else:
                             c = self.node.rt.remove_contacts.get((remote_host, remote_port))
                         
@@ -103,6 +107,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                 self.node.rt.contacts.add(c)
                                 c.id = node_id
                                 c.last_seen = time.time()
+                                print(PrintColors.GREEN + 'new contact [DISCOVERY REQ]:', self.node, c, PrintColors.END)
                             else:
                                 c = Contact(
                                     id = node_id,
@@ -117,7 +122,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.node.rt.contacts.add(c)
-                                # print(PrintColors.GREEN, 'on_req_discover_nodes:', c, PrintColors.END)
+                                print(PrintColors.GREEN + 'new contact [DISCOVERY REQ]:', self.node, c, PrintColors.END)
 
         # forward to res_discover_nodes
         self.res(remote_host, remote_port, *args, **kwargs)
@@ -155,8 +160,6 @@ class DiscoverProtocolCommand(ProtocolCommand):
         contacts = res['contacts']
         bootstrap = res.get('bootstrap', False)
 
-        # print('on_res_discover_nodes:', remote_host, remote_port, len(contacts), (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
-
         # update contact's `last_seen`, or add contact
         c = self.node.rt.contacts.get(node_id)
         
@@ -178,6 +181,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                     self.node.rt.contacts.add(c)
                     c.id = node_id
                     c.last_seen = time.time()
+                    print(PrintColors.GREEN + 'new contact [DISCOVERY ON RES]:', self.node, c, PrintColors.END)
                 else:
                     c = self.node.rt.add_contacts.get((remote_host, remote_port))
                 
@@ -186,6 +190,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                         self.node.rt.contacts.add(c)
                         c.id = node_id
                         c.last_seen = time.time()
+                        print(PrintColors.GREEN + 'new contact [DISCOVERY ON RES]:', self.node, c, PrintColors.END)
                     else:
                         # remove_contact
                         c = self.node.rt.remove_contacts.get(node_id)
@@ -195,6 +200,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                             self.node.rt.contacts.add(c)
                             c.id = node_id
                             c.last_seen = time.time()
+                            print(PrintColors.GREEN + 'new contact [DISCOVERY ON RES]:', self.node, c, PrintColors.END)
                         else:
                             c = self.node.rt.remove_contacts.get((remote_host, remote_port))
                         
@@ -203,6 +209,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                 self.node.rt.contacts.add(c)
                                 c.id = node_id
                                 c.last_seen = time.time()
+                                print(PrintColors.GREEN + 'new contact [DISCOVERY ON RES]:', self.node, c, PrintColors.END)
                             else:
                                 c = Contact(
                                     id = node_id,
@@ -217,7 +224,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.node.rt.contacts.add(c)
-                                # print(PrintColors.GREEN, 'on_res_discover_nodes:', c, PrintColors.END)
+                                print(PrintColors.GREEN + 'new contact [DISCOVERY ON RES]:', self.node, c, PrintColors.END)
 
         # update discovered nodes/contacts
         for cd in contacts:
@@ -233,28 +240,22 @@ class DiscoverProtocolCommand(ProtocolCommand):
             
             if c:
                 c.id = node_id
-                # c.last_seen = time.time()
             else:
                 c = self.node.rt.contacts.get((remote_host, remote_port))
             
                 if c:
                     c.id = node_id
-                    # c.last_seen = time.time()
                 else:
                     # add_contact
                     c = self.node.rt.add_contacts.get(node_id)
 
                     if c:
                         c.id = node_id
-                        # c.last_seen = time.time()
-                        # print(PrintColors.GREEN, 'on_res_discover_nodes [0]:', c, PrintColors.END)
                     else:
                         c = self.node.rt.add_contacts.get((remote_host, remote_port))
                     
                         if c:
                             c.id = node_id
-                            # c.last_seen = time.time()
-                            # print(PrintColors.GREEN, 'on_res_discover_nodes [1]:', c, PrintColors.END)
                         else:
                             # remove_contact
                             c = self.node.rt.remove_contacts.get(node_id)
@@ -263,8 +264,6 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                 self.node.rt.remove_contacts.remove(c)
                                 self.node.rt.add_contacts.add(c)
                                 c.id = node_id
-                                # c.last_seen = time.time()
-                                # print(PrintColors.GREEN, 'on_res_discover_nodes [2]:', c, PrintColors.END)
                             else:
                                 c = self.node.rt.remove_contacts.get((remote_host, remote_port))
                             
@@ -272,8 +271,6 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                     self.node.rt.remove_contacts.remove(c)
                                     self.node.rt.add_contacts.add(c)
                                     c.id = node_id
-                                    # c.last_seen = time.time()
-                                    # print(PrintColors.GREEN, 'on_res_discover_nodes [3]:', c, PrintColors.END)
                                 else:
                                     c = Contact(
                                         id = node_id,
@@ -288,4 +285,3 @@ class DiscoverProtocolCommand(ProtocolCommand):
                                     # put it into known active contacts
                                     c.last_seen = time.time()
                                     self.node.rt.add_contacts.add(c)
-                                    # print(PrintColors.GREEN, 'on_res_discover_nodes [4]:', c, PrintColors.END)

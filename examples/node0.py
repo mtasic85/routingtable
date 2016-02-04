@@ -8,6 +8,8 @@ import asyncio
 from node import Node
 from contact import Contact
 
+from datetime_protocol_command import DateTimeProtocolCommand
+
 # event loop
 loop = asyncio.get_event_loop()
 
@@ -21,6 +23,9 @@ node = Node(
     listen_port = node_config['listen_port'],
     bootstrap = node_config.get('bootstrap', False),
 )
+
+pc = DateTimeProtocolCommand(node, 1, 0, 10)
+node.add_protocol_command(pc)
 
 for cd in node_config['contacts']:
     c = Contact(**cd)

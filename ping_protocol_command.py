@@ -3,6 +3,7 @@ __all__ = ['PingProtocolCommand']
 import time
 import random
 
+from print_colors import PrintColors
 from contact import Contact
 from protocol_command import ProtocolCommand
 
@@ -79,7 +80,7 @@ class PingProtocolCommand(ProtocolCommand):
                     self.node.rt.contacts.add(c)
                     c.id = node_id
                     c.last_seen = time.time()
-                    # print(PrintColors.GREEN, 'on_req_ping [0]:', c, PrintColors.END)
+                    print(PrintColors.GREEN + 'new contact [PING ON REQ]:', self.node, c, PrintColors.END)
                 else:
                     c = self.node.rt.add_contacts.get((remote_host, remote_port))
                 
@@ -88,7 +89,7 @@ class PingProtocolCommand(ProtocolCommand):
                         self.node.rt.contacts.add(c)
                         c.id = node_id
                         c.last_seen = time.time()
-                        # print(PrintColors.GREEN, 'on_req_ping [1]:', c, PrintColors.END)
+                        print(PrintColors.GREEN + 'new contact [PING ON REQ]:', self.node, c, PrintColors.END)
                     else:
                         # remove_contact
                         c = self.node.rt.remove_contacts.get(node_id)
@@ -98,7 +99,7 @@ class PingProtocolCommand(ProtocolCommand):
                             self.node.rt.contacts.add(c)
                             c.id = node_id
                             c.last_seen = time.time()
-                            # print(PrintColors.GREEN, 'on_req_ping [2]:', c, PrintColors.END)
+                            print(PrintColors.GREEN + 'new contact [PING ON REQ]:', self.node, c, PrintColors.END)
                         else:
                             c = self.node.rt.remove_contacts.get((remote_host, remote_port))
                         
@@ -107,7 +108,7 @@ class PingProtocolCommand(ProtocolCommand):
                                 self.node.rt.contacts.add(c)
                                 c.id = node_id
                                 c.last_seen = time.time()
-                                # print(PrintColors.GREEN, 'on_req_ping [3]:', c, PrintColors.END)
+                                print(PrintColors.GREEN + 'new contact [PING ON REQ]:', self.node, c, PrintColors.END)
                             else:
                                 c = Contact(
                                     id = node_id,
@@ -122,7 +123,7 @@ class PingProtocolCommand(ProtocolCommand):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.node.rt.contacts.add(c)
-                                # print(PrintColors.GREEN, 'on_req_ping [4]:', c, PrintColors.END)
+                                print(PrintColors.GREEN + 'new contact [PING ON REQ]:', self.node, c, PrintColors.END)
 
         # forward to res_discover_nodes
         self.res(remote_host, remote_port, *args, **kwargs)
@@ -152,8 +153,6 @@ class PingProtocolCommand(ProtocolCommand):
         self.node.send_message(message_data, remote_host, remote_port)
 
     def on_res(self, remote_host, remote_port, res):
-        # print('on_res_ping:', remote_host, remote_port, (len(self.rt.contacts), len(self.rt.add_contacts), len(self.rt.remove_contacts)))
-
         node_id = res['id']
         local_host = res['local_host']
         local_port = res['local_port']
@@ -180,7 +179,7 @@ class PingProtocolCommand(ProtocolCommand):
                     self.node.rt.contacts.add(c)
                     c.id = node_id
                     c.last_seen = time.time()
-                    # print(PrintColors.GREEN, 'on_res_ping [0]:', c, PrintColors.END)
+                    print(PrintColors.GREEN + 'new contact [PING ON RES]:', self.node, c, PrintColors.END)
                 else:
                     c = self.node.rt.add_contacts.get((remote_host, remote_port))
                 
@@ -189,7 +188,7 @@ class PingProtocolCommand(ProtocolCommand):
                         self.node.rt.contacts.add(c)
                         c.id = node_id
                         c.last_seen = time.time()
-                        # print(PrintColors.GREEN, 'on_res_ping [1]:', c, PrintColors.END)
+                        print(PrintColors.GREEN + 'new contact [PING ON RES]:', self.node, c, PrintColors.END)
                     else:
                         # remove_contact
                         c = self.node.rt.remove_contacts.get(node_id)
@@ -199,7 +198,7 @@ class PingProtocolCommand(ProtocolCommand):
                             self.node.rt.contacts.add(c)
                             c.id = node_id
                             c.last_seen = time.time()
-                            # print(PrintColors.GREEN, 'on_res_ping [2]:', c, PrintColors.END)
+                            print(PrintColors.GREEN + 'new contact [PING ON RES]:', self.node, c, PrintColors.END)
                         else:
                             c = self.node.rt.remove_contacts.get((remote_host, remote_port))
                         
@@ -208,7 +207,7 @@ class PingProtocolCommand(ProtocolCommand):
                                 self.node.rt.contacts.add(c)
                                 c.id = node_id
                                 c.last_seen = time.time()
-                                # print(PrintColors.GREEN, 'on_res_ping [3]:', c, PrintColors.END)
+                                print(PrintColors.GREEN + 'new contact [PING ON RES]:', self.node, c, PrintColors.END)
                             else:
                                 c = Contact(
                                     id = node_id,
@@ -223,4 +222,4 @@ class PingProtocolCommand(ProtocolCommand):
                                 # put it into known active contacts
                                 c.last_seen = time.time()
                                 self.node.rt.contacts.add(c)
-                                # print(PrintColors.GREEN, 'on_res_ping [4]:', c, PrintColors.END)
+                                print(PrintColors.GREEN + 'new contact [PING ON RES]:', self.node, c, PrintColors.END)

@@ -53,6 +53,12 @@ class Node(object):
         self.loop.call_soon(self.check_recv_buffer)
         self.loop.call_soon(self.remove_dead_contacts)
 
+    def __repr__(self):
+        return '<{} id={}>'.format(
+            self.__class__.__name__,
+            self.id,
+        )
+
     #
     # protocol commands
     #
@@ -90,31 +96,8 @@ class Node(object):
     #
     # tasks
     #
-
-    # def remove_dead_contacts(self):
-    #     print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts), len(self.rt.remove_contacts), PrintColors.END)
-    #     t = time.time()
-    #     move_remove_contacts = []
-    #     remove_remove_contacts = []
-
-    #     for c in self.rt.contacts.all():
-    #         if c.id == self.id:
-    #             continue
-
-    #         if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
-    #             self.rt.contacts.remove(c)
-    #             self.rt.remove_contacts.add(c)
-    #             print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
-
-    #     for c in self.rt.remove_contacts.all():
-    #         if t - c.last_seen > 30.0 + (len(self.rt.contacts) + len(self.rt.add_contacts)) * 2.0:
-    #             self.rt.remove_contacts.remove(c)
-    #             print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
-
-    #     self.loop.call_later(15.0 + random.random() * 15.0, self.remove_dead_contacts)
-
     def remove_dead_contacts(self):
-        print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts), len(self.rt.remove_contacts), PrintColors.END)
+        # print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts), len(self.rt.remove_contacts), PrintColors.END)
         t = time.time()
         move_remove_contacts = []
         remove_remove_contacts = []
@@ -129,15 +112,15 @@ class Node(object):
         for c in move_remove_contacts:
             self.rt.contacts.remove(c)
             self.rt.remove_contacts.add(c)
-            print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
+            print(PrintColors.YELLOW + 'remove_dead_contacts:', self, c, PrintColors.END)
 
         for c in self.rt.remove_contacts:
             if t - c.last_seen > 30.0 + (len(self.rt.contacts) + len(self.rt.add_contacts)) * 2.0:
                 remove_remove_contacts.append(c)
-        
+
         for c in remove_remove_contacts:
             self.rt.remove_contacts.remove(c)
-            print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
+            print(PrintColors.RED + 'remove_dead_contacts:', self, c, PrintColors.END)
 
         self.loop.call_later(15.0 + random.random() * 15.0, self.remove_dead_contacts)
 
@@ -155,8 +138,6 @@ class Node(object):
 
     def rect_sock_data(self):
         data, remote_address = self.sock.recvfrom(1500)
-        # print('read_sock [DATA]:', remote_address, len(data), data)
-
         self.process_sock_data(data, remote_address)
 
     def process_sock_data(self, data, remote_address):
@@ -185,7 +166,6 @@ class Node(object):
         pack_data = recv_buffer_rest[:pack_size]
         rest_data = recv_buffer_rest[pack_size:]
         self.recv_buffer[remote_address].append(rest_data)
-        # print('read_sock [PACK]:', msg_size, msg_n_packs, pack_size, pack_index, pack_data)
 
         if msg_id not in self.recv_packs:
             self.recv_packs[msg_id] = {}
@@ -196,8 +176,6 @@ class Node(object):
             return
 
         msg = b''.join([self.recv_packs[msg_id][i] for i in range(msg_n_packs)])
-        # print('read_sock [MSG]:', msg)
-
         self.parse_message(msg, remote_host, remote_port)
 
     #
