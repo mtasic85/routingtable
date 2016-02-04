@@ -90,23 +90,54 @@ class Node(object):
     #
     # tasks
     #
+
+    # def remove_dead_contacts(self):
+    #     print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts), len(self.rt.remove_contacts), PrintColors.END)
+    #     t = time.time()
+    #     move_remove_contacts = []
+    #     remove_remove_contacts = []
+
+    #     for c in self.rt.contacts.all():
+    #         if c.id == self.id:
+    #             continue
+
+    #         if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
+    #             self.rt.contacts.remove(c)
+    #             self.rt.remove_contacts.add(c)
+    #             print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
+
+    #     for c in self.rt.remove_contacts.all():
+    #         if t - c.last_seen > 30.0 + (len(self.rt.contacts) + len(self.rt.add_contacts)) * 2.0:
+    #             self.rt.remove_contacts.remove(c)
+    #             print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
+
+    #     self.loop.call_later(15.0 + random.random() * 15.0, self.remove_dead_contacts)
+
     def remove_dead_contacts(self):
         print(PrintColors.VIOLET, 'remove_dead_contacts:', self, len(self.rt.contacts), len(self.rt.remove_contacts), PrintColors.END)
         t = time.time()
+        move_remove_contacts = []
+        remove_remove_contacts = []
 
-        for c in self.rt.contacts.all():
+        for c in self.rt.contacts:
             if c.id == self.id:
                 continue
 
             if t - c.last_seen > 15.0 + len(self.rt.contacts) + len(self.rt.add_contacts):
-                self.rt.contacts.remove(c)
-                self.rt.remove_contacts.add(c)
-                print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
+                move_remove_contacts.append(c)
 
-        for c in self.rt.remove_contacts.all():
+        for c in move_remove_contacts:
+            self.rt.contacts.remove(c)
+            self.rt.remove_contacts.add(c)
+            print(PrintColors.YELLOW, 'remove_dead_contacts:', c, PrintColors.END)
+
+        for c in self.rt.remove_contacts:
             if t - c.last_seen > 30.0 + (len(self.rt.contacts) + len(self.rt.add_contacts)) * 2.0:
-                self.rt.remove_contacts.remove(c)
-                print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
+                remove_remove_contacts.append(c)
+        
+        for c in remove_remove_contacts:
+            self.rt.remove_contacts.remove(c)
+            print(PrintColors.RED, 'remove_dead_contacts:', c, PrintColors.END)
 
         self.loop.call_later(15.0 + random.random() * 15.0, self.remove_dead_contacts)
 

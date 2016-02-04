@@ -127,7 +127,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
         node_id = self.node.id
         local_host = self.node.listen_host
         local_port = self.node.listen_port
-        contacts = [c.__getstate__() for c in self.node.rt.contacts.all()]
+        contacts = [c.__getstate__() for c in self.node.rt.contacts]
 
         res = {
             'id': node_id,
