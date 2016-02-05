@@ -56,7 +56,7 @@ class PingProtocolCommand(ProtocolCommand):
             self.node.send_message(message_data, c.remote_host, c.remote_port)
 
         # schedule next discover
-        self.node.loop.call_later(0.0 + random.random() * 1.0, self.req)
+        self.node.loop.call_later(0.0 + random.random() * 0.5, self.req)
     
     def on_req(self, remote_host, remote_port, *args, **kwargs):
         node_id = kwargs['id']

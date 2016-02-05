@@ -1,6 +1,5 @@
 __all__ = ['Node']
 
-# import gc
 import math
 import uuid
 import time
@@ -16,10 +15,6 @@ from routing_table import RoutingTable
 from protocol_command import ProtocolCommand
 from ping_protocol_command import PingProtocolCommand
 from discover_protocol_command import DiscoverProtocolCommand
-
-# gc.enable()
-# gc.set_debug(gc.DEBUG_STATS | gc.DEBUG_LEAK)
-# gc.set_threshold(1, 1, 1)
 
 class Node(object):
     def __init__(self, loop, id=None, listen_host='0.0.0.0', listen_port=6633, bootstrap=False):
@@ -181,6 +176,7 @@ class Node(object):
             return
 
         msg = b''.join([self.recv_packs[msg_id][i] for i in range(msg_n_packs)])
+        del self.recv_packs[msg_id]
         self.parse_message(msg, remote_host, remote_port)
 
     #

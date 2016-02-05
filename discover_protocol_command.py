@@ -1,6 +1,5 @@
 __all__ = ['DiscoverProtocolCommand']
 
-# import gc
 import time
 import random
 
@@ -20,7 +19,7 @@ class DiscoverProtocolCommand(ProtocolCommand):
         c = self.node.rt.contacts.random(without_id=self.node.id)
 
         if not c or c.id is None:
-            self.node.loop.call_later(0.0 + random.random() * 10.0, self.req)
+            self.node.loop.call_later(5.0 + random.random() * 5.0, self.req)
             return
 
         # print('discover_nodes:', c)
@@ -162,9 +161,6 @@ class DiscoverProtocolCommand(ProtocolCommand):
 
         # send message
         self.node.send_message(message_data, remote_host, remote_port)
-
-        # print('gc.is_tracked(contacts) =', gc.is_tracked(contacts))
-        # print('gc.collect() =', gc.collect())
 
     def on_res(self, remote_host, remote_port, res):
         node_id = res['id']
